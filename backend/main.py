@@ -14,7 +14,8 @@ import traceback
 QDRANT_HOST = os.getenv("QDRANT_HOST", "localhost")
 QDRANT_PORT = int(os.getenv("QDRANT_PORT", 6333))
 QDRANT_COLLECTION = os.getenv("QDRANT_COLLECTION", "essential_oils")
-MODEL_NAME = 'sentence-transformers/all-MiniLM-L6-v2'
+MODEL_NAME = 'jinaai/jina-embeddings-v2-base-de'
+VECTOR_NAME = 'jina-embeddings-v2-base-de'
 
 # Global variables for model and client
 model = None
@@ -31,7 +32,7 @@ async def lifespan(app: FastAPI):
     print(f"Using device: {device}")
     
     try:
-        model = SentenceTransformer(MODEL_NAME, device=device)
+        model = SentenceTransformer(MODEL_NAME, device=device, trust_remote_code=True)
         print("Model loaded successfully.")
     except Exception as e:
         print(f"Error loading model: {e}")
@@ -114,6 +115,7 @@ async def search_oils(request: SearchRequest):
         search_result = qdrant_client.query_points(
             collection_name=QDRANT_COLLECTION,
             query=query_vector,
+            using=VECTOR_NAME,
             limit=request.limit,
             with_payload=True
         )
@@ -147,7 +149,6 @@ async def recommend_oils(request: RecommendRequest):
         raise HTTPException(status_code=400, detail="At least one positive ID is required for recommendation.")
 
     try:
-        # Use RecommendQuery correctly
         recommend_input = models.RecommendInput(
             positive=request.positive, 
             negative=request.negative
@@ -157,10 +158,12 @@ async def recommend_oils(request: RecommendRequest):
         recommend_result = qdrant_client.query_points(
             collection_name=QDRANT_COLLECTION,
             query=recommend_query,
+            using=VECTOR_NAME,
             limit=request.limit,
             with_payload=True
         )
     except Exception as e:
+        traceback.print_exc()
         raise HTTPException(status_code=500, detail=f"Qdrant recommendation failed: {str(e)}")
 
     results = []
@@ -198,6 +201,7 @@ async def get_random_oils(limit: int = 5):
         search_result = qdrant_client.query_points(
             collection_name=QDRANT_COLLECTION,
             query=random_vector,
+            using=VECTOR_NAME,
             limit=limit,
             with_payload=True
         )

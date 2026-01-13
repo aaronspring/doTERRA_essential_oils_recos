@@ -5,3 +5,4 @@
 - never `pip install` instead use `uv add <package>`
 - never `git add .`
 - use playwright MCP to access the web ui
+- update the `README.md` with important changes

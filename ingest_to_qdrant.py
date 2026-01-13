@@ -42,8 +42,9 @@ def main():
         print("Error: 'serialized_text' column not found in CSV.")
         return
 
-    # Switch to standard stable model
-    model_name = 'sentence-transformers/all-MiniLM-L6-v2'
+    # Switch to jina-embeddings-v2-base-de
+    model_name = 'jinaai/jina-embeddings-v2-base-de'
+    vector_name = 'jina-embeddings-v2-base-de'
     
     print(f"Initializing model: {model_name}...")
     
@@ -54,8 +55,8 @@ def main():
     
     print(f"Using device: {device}")
     
-    # Standard SentenceTransformer
-    model = SentenceTransformer(model_name, device=device)
+    # Jina embeddings v2 needs trust_remote_code=True
+    model = SentenceTransformer(model_name, device=device, trust_remote_code=True)
 
     # 4. Generate Embeddings
     print("Generating embeddings for 'serialized_text'...")
@@ -83,10 +84,12 @@ def main():
         return
 
     # 6. Create collection
-    print(f"Creating (or recreating) collection '{collection_name}'...")
+    print(f"Creating (or recreating) collection '{collection_name}' with named vector '{vector_name}'...")
     client.recreate_collection(
         collection_name=collection_name,
-        vectors_config=VectorParams(size=vector_size, distance=Distance.COSINE),
+        vectors_config={
+            vector_name: VectorParams(size=vector_size, distance=Distance.COSINE)
+        },
     )
 
     # 7. Prepare and Upload Points
@@ -105,7 +108,7 @@ def main():
         
         points.append(PointStruct(
             id=i,
-            vector=embeddings[i].tolist(),
+            vector={vector_name: embeddings[i].tolist()},
             payload=payload
         ))
 
