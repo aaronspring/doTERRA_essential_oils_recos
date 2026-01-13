@@ -1,0 +1,26 @@
+
+
+services:
+  qdrant:
+    image: qdrant/qdrant:latest
+    container_name: qdrant_oils
+    ports:
+      - "6333:6333"
+    volumes:
+      - ./qdrant_data:/qdrant/storage
+
+  backend:
+    build: ./backend
+    container_name: backend_oils
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./backend:/app
+      # Optional: Map huggingface cache to host to persist downloaded models
+      - ~/.cache/huggingface:/root/.cache/huggingface
+    environment:
+      - QDRANT_HOST=qdrant
+      - QDRANT_PORT=6333
+      - QDRANT_COLLECTION=essential_oils
+    depends_on:
+      - qdrant

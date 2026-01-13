@@ -1,0 +1,12 @@
+fastapi
+uvicorn
+qdrant-client
+sentence-transformers
+torch
+pandas
+pydantic
+einops
+transformers
+accelerate
+peft
+Pillow

@@ -11,3 +11,6 @@ wheels/
 
 # csv files
 *.csv
+
+# Qdrant data
+qdrant_data
