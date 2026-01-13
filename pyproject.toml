@@ -1,0 +1,23 @@
+[project]
+name = "dottera-essential-oils-recos"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.9"
+dependencies = [
+    "beautifulsoup4>=4.14.3",
+    "einops>=0.8.1",
+    "ipykernel>=6.31.0",
+    "lxml>=6.0.2",
+    "matplotlib>=3.9.4",
+    "pandas>=2.3.3",
+    "peft>=0.17.1",
+    "pillow>=11.3.0",
+    "qdrant-client>=1.16.1",
+    "requests>=2.32.5",
+    "seaborn>=0.13.2",
+    "sentence-transformers>=5.1.2",
+    "torch>=2.8.0",
+    "torchvision>=0.23.0",
+    "transformers>=4.57.5",
+]
