@@ -3,7 +3,7 @@ name = "dottera-essential-oils-recos"
 version = "0.1.0"
 description = "Add your description here"
 readme = "README.md"
-requires-python = ">=3.9"
+requires-python = ">=3.13"
 dependencies = [
     "beautifulsoup4>=4.14.3",
     "einops>=0.8.1",
