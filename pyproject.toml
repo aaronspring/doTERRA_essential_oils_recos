@@ -20,4 +20,7 @@ dependencies = [
     "torch>=2.8.0",
     "torchvision>=0.23.0",
     "transformers>=4.57.5",
+    "fastapi>=0.115.0",
+    "uvicorn>=0.30.0",
+    "accelerate>=0.34.0",
 ]

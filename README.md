@@ -9,7 +9,7 @@ Inspired by the [Qdrant Food Discovery Demo](https://github.com/qdrant/demo-food
 Traditional search requires you to know exactly what you are looking for. However, when exploring essential oils, you might have a vague idea of a scent profile or a benefit but want to see options and explore related products.
 
 This demo uses a **"Discovery" paradigm**:
-1. You are presented with a set of oils.
+1. You are presented with a set of oils. Optionally you can enter a search query to rank the oils related to your query.
 2. You can **Like** or **Dislike** specific products.
 3. The system uses Qdrant's [Recommendation API](https://qdrant.tech/documentation/concepts/search/#recommendation-api) to find other oils that are semantically similar to your likes and dissimilar to your dislikes.
 
@@ -33,42 +33,62 @@ The project consists of three main components:
 ### Prerequisites
 
 - [Docker](https://www.docker.com/) and [Docker Compose](https://docs.docker.com/compose/)
-- Python 3.10+ (for data ingestion)
-- Node.js (for running the frontend locally)
+- [uv](https://docs.astral.sh/uv/getting-started/installation/)
+- [Node.js](https://nodejs.org/en/download)
 
-### 1. Start the Infrastructure
+---
+
+### **🚀 Quick Start (One Command)**
+
+If you have the prerequisites installed, you can set up the entire project (installing dependencies, starting the database, and processing data) and open the app with a single command:
+
+```bash
+make run-app
+```
+
+---
+
+
+### 1. Project Setup
+
+Install all dependencies using the unified `uv` environment:
+
+```bash
+make install
+```
+
+### 2. Start the Infrastructure
 
 Run Qdrant and the Backend using Docker Compose:
 
 ```bash
-docker-compose up -d
+make docker-up
 ```
 
-### 2. Ingest Data
+### 3. Ingest Data
 
-First, install the backend dependencies locally to run the ingestion script:
+If you haven't already ingested the data into Qdrant, you can run the full pipeline or just the ingestion step:
 
 ```bash
-# Recommended to use a virtual environment
-pip install pandas sentence-transformers qdrant-client tqdm torch
+# To run the full pipeline (scrape -> serialize -> ingest)
+make pipeline
+
+# Or just ingestion if you already have the CSVs
+make ingest
 ```
 
-Then, run the ingestion script to vectorize the oils and upload them to Qdrant:
+### 4. Run the Frontend
+
+The frontend is also managed via the Makefile:
 
 ```bash
-python ingest_to_qdrant.py
+make dev-frontend
 ```
 
-*Note: Ensure `single_oil.csv` or `doterra_oils_serialized.csv` is present in the root directory.*
-
-### 3. Run the Frontend
-
-Navigate to the frontend directory and start the development server:
+Or run both backend and frontend together:
 
 ```bash
-cd frontend
-npm install
-npm run dev
+make dev
 ```
 
 The application will be available at `http://localhost:5173`.

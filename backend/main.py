@@ -10,12 +10,15 @@ import torch
 import numpy as np
 import traceback
 
-# Configuration
-QDRANT_HOST = os.getenv("QDRANT_HOST", "localhost")
-QDRANT_PORT = int(os.getenv("QDRANT_PORT", 6333))
-QDRANT_COLLECTION = os.getenv("QDRANT_COLLECTION", "essential_oils")
-MODEL_NAME = 'jinaai/jina-embeddings-v2-base-de'
-VECTOR_NAME = 'jina-embeddings-v2-base-de'
+try:
+    from config import QDRANT_HOST, QDRANT_PORT, QDRANT_COLLECTION, MODEL_NAME, VECTOR_NAME
+except ImportError:
+    # Fallback for different execution contexts
+    QDRANT_HOST = os.getenv("QDRANT_HOST", "localhost")
+    QDRANT_PORT = int(os.getenv("QDRANT_PORT", 6333))
+    QDRANT_COLLECTION = os.getenv("QDRANT_COLLECTION", "essential_oils")
+    MODEL_NAME = 'jinaai/jina-embeddings-v2-base-de'
+    VECTOR_NAME = MODEL_NAME.split('/')[-1]
 
 # Global variables for model and client
 model = None

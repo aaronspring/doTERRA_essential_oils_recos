@@ -10,12 +10,14 @@ services:
       - ./qdrant_data:/qdrant/storage
 
   backend:
-    build: ./backend
+    build:
+      context: .
+      dockerfile: Dockerfile.backend
     container_name: backend_oils
     ports:
       - "8000:8000"
     volumes:
-      - ./backend:/app
+      - .:/app
       # Optional: Map huggingface cache to host to persist downloaded models
       - ~/.cache/huggingface:/root/.cache/huggingface
     environment:

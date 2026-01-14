@@ -1,3 +1,5 @@
+import os
+import sys
 import pandas as pd
 import numpy as np
 from sentence_transformers import SentenceTransformer
@@ -5,19 +7,26 @@ from qdrant_client import QdrantClient
 from qdrant_client.models import Distance, VectorParams, PointStruct
 from tqdm import tqdm
 import torch
-import os
+from pathlib import Path
+
+# Add project root to sys.path to import config
+project_root = str(Path(__file__).resolve().parent.parent)
+if project_root not in sys.path:
+    sys.path.append(project_root)
+
+from config import QDRANT_HOST, QDRANT_PORT, QDRANT_COLLECTION, MODEL_NAME, VECTOR_NAME
 
 def main():
     # 1. Configuration
-    csv_path = os.getenv("CSV_PATH", "single_oil.csv")
-    model_name = 'jinaai/jina-embeddings-v3'
-    collection_name = "essential_oils"
+    script_dir = Path(__file__).parent
+    csv_path = os.getenv("CSV_PATH", str(script_dir / "single_oil.csv"))
+    collection_name = QDRANT_COLLECTION
     
-    # Qdrant connection settings (Localhost Docker)
-    qdrant_host = os.getenv("QDRANT_HOST", "localhost")
-    qdrant_port = int(os.getenv("QDRANT_PORT", 6333))
+    # Qdrant connection settings
+    qdrant_host = QDRANT_HOST
+    qdrant_port = QDRANT_PORT
     
-    # Payload columns to include
+    # qdrant payload columns to include
     payload_cols = [
         'product_name', 
         'product_sub_name', 
@@ -42,9 +51,8 @@ def main():
         print("Error: 'serialized_text' column not found in CSV.")
         return
 
-    # Switch to jina-embeddings-v2-base-de
-    model_name = 'jinaai/jina-embeddings-v2-base-de'
-    vector_name = 'jina-embeddings-v2-base-de'
+    model_name = MODEL_NAME
+    vector_name = VECTOR_NAME
     
     print(f"Initializing model: {model_name}...")
     
@@ -60,6 +68,9 @@ def main():
 
     # 4. Generate Embeddings
     print("Generating embeddings for 'serialized_text'...")
+    zero_len_count = (df['serialized_text'].fillna("").str.len() == 0).sum()
+    if zero_len_count > 0:
+        print(f"Found {zero_len_count} zero-length serialized texts. Setting them to empty string.")
     sentences = df['serialized_text'].fillna("").tolist()
     
     # Generate embeddings
