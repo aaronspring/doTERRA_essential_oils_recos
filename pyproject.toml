@@ -1,7 +1,7 @@
 [project]
-name = "dottera-essential-oils-recos"
+name = "doTERRA-essential-oils-recos"
 version = "0.1.0"
-description = "Add your description here"
+description = "Search and discover dōTERRA essential oils"
 readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [
