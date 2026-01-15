@@ -1,4 +1,4 @@
-.PHONY: help install scrape serialize ingest pipeline docker-up docker-down dev-backend dev-frontend dev
+.PHONY: help install scrape serialize ingest pipeline docker-up docker-down dev-backend dev-frontend dev lint typecheck format precommit
 
 help:
 	@echo "Available commands:"
@@ -12,13 +12,28 @@ help:
 	@echo "  make dev-backend   - Start backend development server"
 	@echo "  make dev-frontend  - Start frontend development server"
 	@echo "  make dev           - Start both backend and frontend"
-	@echo "  make run-app       - Setup everything and open the app (One-click for anyone!)"
+	@echo "  make run-app       - Setup everything and open the app (One-click for fresh system!)"
+	@echo "  make run-app-no-scrape - Like run-app but skip the scraping step"
+	@echo "  make format        - Format code with black, ruff and ty (via uvx)"
+	@echo "  make precommit     - Run pre-commit hooks (via uvx)"
 
 run-app: install docker-up
 	@echo "Waiting for database to start..."
 	@sleep 3
 	@echo "Ensuring data is ingested..."
 	make pipeline
+	@echo "Starting the application..."
+	@echo "Your browser will open automatically at http://localhost:5173"
+	@open http://localhost:5173 || xdg-open http://localhost:5173 || echo "Please open http://localhost:5173 in your browser"
+	make dev
+
+
+run-app-no-scrape: install docker-up
+	@echo "Waiting for database to start..."
+	@sleep 3
+	@echo "Skipping scraping step..."
+	@echo "Ensuring data is ingested..."
+	make ingest
 	@echo "Starting the application..."
 	@echo "Your browser will open automatically at http://localhost:5173"
 	@open http://localhost:5173 || xdg-open http://localhost:5173 || echo "Please open http://localhost:5173 in your browser"
@@ -57,3 +72,11 @@ dev:
 	@echo "Starting backend and frontend..."
 	@echo "Use 'make dev-backend' and 'make dev-frontend' in separate terminals for full logs."
 	(trap 'kill 0' SIGINT; make dev-backend & make dev-frontend)
+
+format:
+	uvx black .
+	uvx ruff check .
+	uvx ty check .
+
+precommit:
+	uvx pre-commit run --all-files

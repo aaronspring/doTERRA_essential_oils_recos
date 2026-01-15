@@ -1,44 +1,50 @@
 import os
 import sys
-import pandas as pd
-import numpy as np
-from sentence_transformers import SentenceTransformer
-from qdrant_client import QdrantClient
-from qdrant_client.models import Distance, VectorParams, PointStruct
-from tqdm import tqdm
-import torch
 from pathlib import Path
 
-# Add project root to sys.path to import config
 project_root = str(Path(__file__).resolve().parent.parent)
 if project_root not in sys.path:
     sys.path.append(project_root)
 
-from config import QDRANT_HOST, QDRANT_PORT, QDRANT_COLLECTION, MODEL_NAME, VECTOR_NAME
+import pandas as pd  # noqa: E402
+import torch  # noqa: E402
+from qdrant_client import QdrantClient  # noqa: E402
+from qdrant_client.models import Distance, PointStruct, VectorParams  # noqa: E402
+from sentence_transformers import SentenceTransformer  # noqa: E402
+from tqdm import tqdm  # noqa: E402
+
+from config import (  # noqa: E402
+    MODEL_NAME,
+    QDRANT_COLLECTION,
+    QDRANT_HOST,
+    QDRANT_PORT,
+    VECTOR_NAME,
+)
+
 
 def main():
     # 1. Configuration
     script_dir = Path(__file__).parent
     csv_path = os.getenv("CSV_PATH", str(script_dir / "single_oil.csv"))
     collection_name = QDRANT_COLLECTION
-    
+
     # Qdrant connection settings
     qdrant_host = QDRANT_HOST
     qdrant_port = QDRANT_PORT
-    
+
     # qdrant payload columns to include
     payload_cols = [
-        'product_name', 
-        'product_sub_name', 
-        'product_image_url', 
-        'product_description', 
-        'brand_lifestyle_title', 
-        'brand_lifestyle_description',
-        'url'
+        "product_name",
+        "product_sub_name",
+        "product_image_url",
+        "product_description",
+        "brand_lifestyle_title",
+        "brand_lifestyle_description",
+        "url",
     ]
 
-    print(f"--- Starting Embeddings Generation and Upload (Local Docker) ---")
-    
+    print("--- Starting Embeddings Generation and Upload (Local Docker) ---")
+
     # 2. Load data
     print(f"Loading data from {csv_path}...")
     try:
@@ -47,39 +53,35 @@ def main():
         print(f"Error: {csv_path} not found.")
         return
 
-    if 'serialized_text' not in df.columns:
+    if "serialized_text" not in df.columns:
         print("Error: 'serialized_text' column not found in CSV.")
         return
 
     model_name = MODEL_NAME
     vector_name = VECTOR_NAME
-    
+
     print(f"Initializing model: {model_name}...")
-    
+
     # Use CUDA if available, else CPU
     device = "cuda" if torch.cuda.is_available() else "cpu"
     if device == "cpu" and torch.backends.mps.is_available():
         device = "mps"
-    
+
     print(f"Using device: {device}")
-    
+
     # Jina embeddings v2 needs trust_remote_code=True
     model = SentenceTransformer(model_name, device=device, trust_remote_code=True)
 
     # 4. Generate Embeddings
     print("Generating embeddings for 'serialized_text'...")
-    zero_len_count = (df['serialized_text'].fillna("").str.len() == 0).sum()
+    zero_len_count = (df["serialized_text"].fillna("").str.len() == 0).sum()
     if zero_len_count > 0:
         print(f"Found {zero_len_count} zero-length serialized texts. Setting them to empty string.")
-    sentences = df['serialized_text'].fillna("").tolist()
-    
+    sentences = df["serialized_text"].fillna("").tolist()
+
     # Generate embeddings
-    embeddings = model.encode(
-        sentences, 
-        show_progress_bar=True, 
-        convert_to_numpy=True
-    )
-    
+    embeddings = model.encode(sentences, show_progress_bar=True, convert_to_numpy=True)
+
     vector_size = embeddings.shape[1]
     print(f"Generated {len(embeddings)} embeddings with dimension {vector_size}.")
 
@@ -95,12 +97,13 @@ def main():
         return
 
     # 6. Create collection
-    print(f"Creating (or recreating) collection '{collection_name}' with named vector '{vector_name}'...")
+    print(
+        f"Creating (or recreating) collection '{collection_name}' "
+        f"with named vector '{vector_name}'..."
+    )
     client.recreate_collection(
         collection_name=collection_name,
-        vectors_config={
-            vector_name: VectorParams(size=vector_size, distance=Distance.COSINE)
-        },
+        vectors_config={vector_name: VectorParams(size=vector_size, distance=Distance.COSINE)},
     )
 
     # 7. Prepare and Upload Points
@@ -109,38 +112,34 @@ def main():
     for i, row in tqdm(df.iterrows(), total=len(df), desc="Preparing Points"):
         # Build payload
         payload = {col: row[col] for col in payload_cols if col in df.columns}
-        
+
         # Rename url to product_url for consistency
-        if 'url' in payload:
-            payload['product_url'] = payload.pop('url')
+        if "url" in payload:
+            payload["product_url"] = payload.pop("url")
 
         # Clean up NaN values for Qdrant compatibility (it doesn't like NaNs)
         payload = {k: (v if pd.notna(v) else "") for k, v in payload.items()}
-        
-        points.append(PointStruct(
-            id=i,
-            vector={vector_name: embeddings[i].tolist()},
-            payload=payload
-        ))
+
+        points.append(
+            PointStruct(id=i, vector={vector_name: embeddings[i].tolist()}, payload=payload)
+        )
 
     # Batch upsert
     # Breaking into chunks if list is very large, but for ~1000 items direct upsert is fine
     chunk_size = 100
     for i in range(0, len(points), chunk_size):
-        chunk = points[i:i+chunk_size]
-        client.upsert(
-            collection_name=collection_name,
-            points=chunk
-        )
-        print(f"Uploaded batch {i} - {i+len(chunk)}")
+        chunk = points[i : i + chunk_size]
+        client.upsert(collection_name=collection_name, points=chunk)
+        print(f"Uploaded batch {i} - {i + len(chunk)}")
 
-    print(f"--- Finished ---")
+    print("--- Finished ---")
     print(f"Successfully uploaded {len(points)} points to collection '{collection_name}'.")
-    
+
     # Verify count
     info = client.get_collection(collection_name)
     print(f"Collection status: {info.status}")
     print(f"Total points: {info.points_count}")
+
 
 if __name__ == "__main__":
     main()

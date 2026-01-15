@@ -6,7 +6,8 @@ This project is a doTERRA essential oils recommendation and search system. It us
 - **Backend**: FastAPI with Qdrant vector database for semantic search
 - **ML Stack**: Sentence-Transformers for embeddings
 - **Data Processing**: BeautifulSoup, lxml for scraping; Pandas for analysis
-- **Package Management**: uv
+- **Package Management**: uv and dev tools with uvx
+- **Automation**: Makefile
 
 ---
 
@@ -40,11 +41,19 @@ This project is a doTERRA essential oils recommendation and search system. It us
 
 ### Code Style
 - Follow PEP 8 guidelines
-- Use Black for formatting: `uv run black <files>`
-- Use Ruff for linting: `uv run ruff check <files>`
+- Use Black for formatting: `uvx black <files>`
+- Use Ruff for linting: `uvx ruff check <files>`
 - Maximum line length: 100 characters
 - Use relative imports within the project
 - One import per line, grouped: standard library, third-party, local
+
+### Pre-commit Hooks
+- Install hooks: `uvx pre-commit install`
+- Run hooks manually: `make precommit`
+- Hooks included:
+  - `ruff`: Linting with auto-fix
+  - `ruff-format`: Code formatting
+  - `ty-check`: Fast type checking
 
 ### Type Hints
 ```python
@@ -85,7 +94,7 @@ def process_oils(oils: List[Dict[str, Any]], threshold: float = 0.5) -> List[Dic
 - Commit secrets, credentials, or `.env` files
 
 ### Before Committing
-1. Run linting: `uv run ruff check .`
+1. Run linting: `uvx ruff check .`
 2. Run tests: `uv run pytest` (if tests exist)
 3. Review changes: `git diff --staged`
 4. Verify no secrets: `git status`
@@ -175,13 +184,16 @@ doTERRA_essential_oils_recos/
 uv run uvicorn backend.main:app --reload
 
 # Format code
-uv run black .
+make format
 
 # Lint code
-uv run ruff check .
+make lint
 
-# Install pre-commit hooks
-uv run pre-commit install
+# Type check
+make typecheck
+
+# Run pre-commit hooks
+make precommit
 ```
 
 ---

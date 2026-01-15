@@ -1,0 +1,4 @@
+[rules]
+unresolved-import = "ignore"
+possibly-missing-attribute = "ignore"
+unsupported-operator = "ignore"

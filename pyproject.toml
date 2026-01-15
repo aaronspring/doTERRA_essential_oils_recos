@@ -3,24 +3,30 @@ name = "doTERRA-essential-oils-recos"
 version = "0.1.0"
 description = "Search and discover dōTERRA essential oils"
 readme = "README.md"
-requires-python = ">=3.13"
+requires-python = ">=3.14"
 dependencies = [
     "beautifulsoup4>=4.14.3",
-    "einops>=0.8.1",
-    "ipykernel>=6.31.0",
-    "lxml>=6.0.2",
-    "matplotlib>=3.9.4",
-    "pandas>=2.3.3",
-    "peft>=0.17.1",
-    "pillow>=11.3.0",
+    "pandas>=2.5.0",
     "qdrant-client>=1.16.1",
     "requests>=2.32.5",
-    "seaborn>=0.13.2",
     "sentence-transformers>=5.1.2",
     "torch>=2.8.0",
-    "torchvision>=0.23.0",
-    "transformers>=4.57.5",
     "fastapi>=0.115.0",
     "uvicorn>=0.30.0",
-    "accelerate>=0.34.0",
+    "ipykernel>=7.1.0",
+]
+
+[tool.black]
+line-length = 100
+
+[tool.ruff]
+line-length = 100
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "W"]
+ignore = []
+
+[dependency-groups]
+dev = [
+    "pre-commit>=4.5.1",
 ]
