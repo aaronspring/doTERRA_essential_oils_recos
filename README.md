@@ -1,7 +1,5 @@
 # dōTERRA Essential Oils Discovery Engine
 
-![Demo GIF showing discovery interactions](screenshots/demo.gif)
-
 This project is a discovery-based recommendation engine for dōTERRA essential oils, powered by [Qdrant](https://qdrant.tech). 
 
 Inspired by the [Qdrant Food Discovery Demo](https://github.com/qdrant/demo-food-discovery), this application allows users to explore a collection of essential oils not just through traditional keyword search, but by interacting with products and receiving recommendations based on their preferences.
@@ -20,7 +18,7 @@ This demo uses a **"Discovery" paradigm**:
 While inspired by the Food Discovery demo, there are key implementation differences:
 
 - **Modality**: The Food Discovery demo uses **image-based** search (CLIP embeddings). This project focuses on **text-based** semantic search.
-- **Embeddings**: We use the `jinaai/jina-embeddings-v2-base-de` model to generate embeddings from a "serialized" text representation of each oil (including its name, sub-name, description, and lifestyle benefits). Dieser Modell ist spezialisiert auf die deutsche Sprache und bietet eine exzellente semantische Repräsentation.
+- **Embeddings**: We use the `jinaai/jina-embeddings-v2-base-de` model to generate embeddings from a "serialized" text representation of each oil (including its name, sub-name, description, and lifestyle benefits). This model is finetuned to semantic understand and retrieval in German language.
 - **Data**: The dataset is custom-scraped from the dōTERRA website, containing detailed product information and high-quality product images.
 
 ## 🏗️ Architecture
@@ -29,6 +27,51 @@ The project consists of three main components:
 - **Backend (FastAPI)**: Connects to Qdrant, handles vectorization of search queries, and exposes discovery/recommendation endpoints.
 - **Frontend (React + Vite)**: A modern, responsive UI for browsing oils and interacting with the recommendation engine.
 - **Qdrant**: The vector search engine that stores oil embeddings and metadata, performing high-performance similarity searches.
+
+Below is a high-level architecture diagram (Mermaid) illustrating how the pieces fit together.
+
+```mermaid
+flowchart LR
+	subgraph user[User]
+		U[Browser / User]
+	end
+
+	subgraph fe[Frontend]
+		FE[React + Vite App]
+	end
+
+	subgraph be[Backend]
+		BE[FastAPI]
+		API[Discovery / Recommendation API]
+		BE --> API
+	end
+
+	subgraph model[Embeddings Service]
+		EMB[Embedding model\njinaai/jina-embeddings-v2-base-de]
+	end
+
+	subgraph q[Qdrant]
+		Q[Qdrant Vector DB]
+	end
+
+	subgraph ingest[Data Pipeline]
+		SCR[Scrapers & Serialization]
+		ING[Ingest Scripts]
+	end
+
+	U --> FE
+	FE --> BE
+	BE --> EMB
+	EMB --> Q
+	BE --> Q
+	SCR --> ING --> Q
+
+	Docker[Docker Compose]
+	Docker -.-> BE
+	Docker -.-> Q
+
+	style Docker stroke-dasharray: 5 5
+```
 
 ## 🚀 Getting Started
 
