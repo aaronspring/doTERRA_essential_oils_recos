@@ -75,6 +75,8 @@ def process_oils(oils: List[Dict[str, Any]], threshold: float = 0.5) -> List[Dic
 
 ## Git Workflow
 
+use `gh` cli tool and dont use github MCP server (not installed)
+
 ### Commit Conventions
 - Use conventional commits: `type(scope): description`
 - Types: `feat`, `fix`, `docs`, `style`, `refactor`, `test`, `chore`
@@ -98,6 +100,7 @@ def process_oils(oils: List[Dict[str, Any]], threshold: float = 0.5) -> List[Dic
 2. Run tests: `uv run pytest` (if tests exist)
 3. Review changes: `git diff --staged`
 4. Verify no secrets: `git status`
+
 
 ---
 
@@ -177,6 +180,9 @@ doTERRA_essential_oils_recos/
 - Navigate to URLs, fill forms, click elements
 - Take snapshots for debugging
 - Handle dialogs and alerts
+
+### git
+- use `gh` cli
 
 ### Development Tools
 ```bash
