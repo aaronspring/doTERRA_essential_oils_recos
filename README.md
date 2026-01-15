@@ -1,5 +1,7 @@
 # dōTERRA Essential Oils Discovery Engine
 
+![Demo GIF showing discovery interactions](screenshots/demo.gif)
+
 This project is a discovery-based recommendation engine for dōTERRA essential oils, powered by [Qdrant](https://qdrant.tech). 
 
 Inspired by the [Qdrant Food Discovery Demo](https://github.com/qdrant/demo-food-discovery), this application allows users to explore a collection of essential oils not just through traditional keyword search, but by interacting with products and receiving recommendations based on their preferences.

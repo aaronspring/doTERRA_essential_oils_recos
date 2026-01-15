@@ -1,0 +1,25 @@
+{
+	"servers": {
+		"playwright": {
+			"command": "npx",
+			"args": [
+				"@playwright/mcp@latest"
+			],
+			"type": "stdio"
+		},
+		"context7": {
+			"url": "https://mcp.context7.com/mcp",
+			"type": "http",
+			"headers": {
+				"CONTEXT7_API_KEY": "${input:context7_api_key}"
+			}
+		}
+	},
+	"inputs": [{
+      "id": "context7_api_key",
+      "type": "promptString",
+      "description": "Enter your Context7 API Key",
+      "password": true
+    }]
+	
+}

@@ -1,0 +1,13 @@
+Access the running app at and take screenshots to create a fig for demostration purposes.
+
+Steps:
+1. Access app with browser or playwright MCP server at http://localhost:5173
+2. Take screenshots of the same fixed dimensions of the viewport show 5 oils in a row after new oil recommendations have been shown in each step:
+2.1 App has started without user interaction named screenshots/1_start.png
+2.2 Entered "beruhigend" into top right search bar and hit enter named screenshots/2_user_search_query.png
+2.3 Liked oil "Align" by clicked on heart button named screenshots/3_user_like.png
+2.4 Additionally disliked oil "Arise" by clicked on thumbs down button, i.e. ne oil is liked and one disliked both appearing in the top row, named screenshots/4_user_dislike.png
+3. Reduce image file size: `optipng -o2 screenshots/*.png` (maybe need to `brew install optipng`)
+4. Glue images together with magick (may need to install `brew install imagemagick`) to screenshots/demo.gif with 1s spacing:
+`magick -delay 200 -loop 0 screenshots/1_start.png screenshots/2_user_search_query.png screenshots/3_user_like.png -delay 500 screenshots/4_user_dislike.png screenshots/demo.gif`
+
