@@ -4,9 +4,9 @@ from contextlib import asynccontextmanager
 
 import numpy as np
 import torch
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from qdrant_client import QdrantClient, models
 from sentence_transformers import SentenceTransformer
 
@@ -69,10 +69,12 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(lifespan=lifespan)
 
-# CORS config
+# CORS configuration
+# In production, restrict to specific origins
+ALLOWED_ORIGINS = os.getenv("ALLOWED_ORIGINS", "http://localhost:5173").split(",")
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # For dev
+    allow_origins=ALLOWED_ORIGINS,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -82,14 +84,20 @@ app.add_middleware(
 
 
 class SearchRequest(BaseModel):
-    query: str
-    limit: int = 10
+    query: str = Field(
+        ..., min_length=1, max_length=500, description="Search query for essential oils"
+    )
+    limit: int = Field(default=10, ge=1, le=100, description="Maximum number of results to return")
 
 
 class RecommendRequest(BaseModel):
-    positive: list[int]  # List of point IDs
-    negative: list[int] = []
-    limit: int = 10
+    positive: list[int] = Field(
+        ..., min_length=1, description="List of point IDs for positive recommendations"
+    )
+    negative: list[int] = Field(
+        default_factory=list, description="List of point IDs for negative recommendations"
+    )
+    limit: int = Field(default=10, ge=1, le=100, description="Maximum number of results to return")
 
 
 class ProductPayload(BaseModel):
@@ -187,7 +195,11 @@ async def recommend_oils(request: RecommendRequest):
 
 
 @app.get("/random", response_model=list[SearchResult])
-async def get_random_oils(limit: int = 5):
+async def get_random_oils(
+    limit: int = Query(
+        default=5, ge=1, le=100, description="Maximum number of random items to return"
+    ),
+):
     """Returns random items for initial discovery"""
     if not qdrant_client:
         raise HTTPException(status_code=503, detail="Database connection missing")
