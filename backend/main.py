@@ -1,5 +1,4 @@
 import os
-import traceback
 from contextlib import asynccontextmanager
 
 import numpy as np
@@ -143,8 +142,8 @@ async def search_oils(request: SearchRequest):
             with_payload=True,
         )
     except Exception as e:
-        traceback.print_exc()
-        raise HTTPException(status_code=500, detail=f"Qdrant search failed: {str(e)}")
+        print(f"Qdrant search failed: {type(e).__name__}")
+        raise HTTPException(status_code=500, detail="Search operation failed")
 
     # 3. Format results
     results = []
@@ -184,8 +183,8 @@ async def recommend_oils(request: RecommendRequest):
             with_payload=True,
         )
     except Exception as e:
-        traceback.print_exc()
-        raise HTTPException(status_code=500, detail=f"Qdrant recommendation failed: {str(e)}")
+        print(f"Qdrant recommendation failed: {type(e).__name__}")
+        raise HTTPException(status_code=500, detail="Recommendation operation failed")
 
     results = []
     for hit in recommend_result.points:
@@ -235,8 +234,8 @@ async def get_random_oils(
         return results
 
     except Exception as e:
-        traceback.print_exc()
-        raise HTTPException(status_code=500, detail=f"Random fetch failed: {str(e)}")
+        print(f"Random fetch failed: {type(e).__name__}")
+        raise HTTPException(status_code=500, detail="Random fetch operation failed")
 
 
 if __name__ == "__main__":
