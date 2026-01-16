@@ -1,7 +1,7 @@
 import axios from 'axios';
 import type { SearchResult } from './types';
 
-const API_URL = 'http://127.0.0.1:8000';
+const API_URL = import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000';
 
 export const api = {
     search: async (query: string): Promise<SearchResult[]> => {
