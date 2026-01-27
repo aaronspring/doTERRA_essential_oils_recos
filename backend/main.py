@@ -1,7 +1,9 @@
+import json
 import os
 from contextlib import asynccontextmanager
 
 import numpy as np
+import requests
 import torch
 from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
@@ -10,7 +12,14 @@ from qdrant_client import QdrantClient, models
 from sentence_transformers import SentenceTransformer
 
 try:
-    from config import MODEL_NAME, QDRANT_COLLECTION, QDRANT_HOST, QDRANT_PORT, VECTOR_NAME
+    from config import (
+        MODEL_NAME,
+        PERPLEXITY_API_KEY,
+        QDRANT_COLLECTION,
+        QDRANT_HOST,
+        QDRANT_PORT,
+        VECTOR_NAME,
+    )
 except ImportError:
     # Fallback for different execution contexts
     QDRANT_HOST = os.getenv("QDRANT_HOST", "localhost")
@@ -18,10 +27,47 @@ except ImportError:
     QDRANT_COLLECTION = os.getenv("QDRANT_COLLECTION", "essential_oils")
     MODEL_NAME = "jinaai/jina-embeddings-v2-base-de"
     VECTOR_NAME = MODEL_NAME.split("/")[-1]
+    PERPLEXITY_API_KEY = os.getenv("PERPLEXITY_API_KEY", "")
 
 # Global variables for model and client
 model = None
 qdrant_client = None
+
+
+def _get_all_product_names() -> list[str]:
+    """
+    Fetch all product names from Qdrant collection.
+
+    Returns:
+        List of unique product names sorted alphabetically
+    """
+    if not qdrant_client:
+        return []
+
+    product_names = set()
+
+    try:
+        # Scroll through all points in the collection
+        points, _ = qdrant_client.scroll(
+            collection_name=QDRANT_COLLECTION, limit=1000, with_payload=True
+        )
+
+        while points:
+            for point in points:
+                if hasattr(point, "payload") and "product_name" in point.payload:
+                    product_names.add(point.payload["product_name"])
+
+            # Get next batch
+            points, _ = qdrant_client.scroll(
+                collection_name=QDRANT_COLLECTION,
+                limit=1000,
+                with_payload=True,
+                offset=len(product_names),
+            )
+    except Exception as e:
+        print(f"Error fetching product names: {e}")
+
+    return sorted(list(product_names))
 
 
 @asynccontextmanager
@@ -87,6 +133,12 @@ class SearchRequest(BaseModel):
         ..., min_length=1, max_length=500, description="Search query for essential oils"
     )
     limit: int = Field(default=10, ge=1, le=100, description="Maximum number of results to return")
+    liked_oils: list[str] = Field(
+        default_factory=list, description="List of names of oils the user likes"
+    )
+    disliked_oils: list[str] = Field(
+        default_factory=list, description="List of names of oils the user dislikes"
+    )
 
 
 class RecommendRequest(BaseModel):
@@ -113,6 +165,7 @@ class SearchResult(BaseModel):
     id: int
     score: float
     payload: ProductPayload
+    source: str = "embedding"  # "embedding" or "perplexity"
 
 
 # --- Endpoints ---
@@ -191,6 +244,208 @@ async def recommend_oils(request: RecommendRequest):
         results.append(SearchResult(id=hit.id, score=hit.score, payload=hit.payload))
 
     return results
+
+
+@app.post("/search/perplexity", response_model=list[SearchResult])
+async def search_oils_perplexity(request: SearchRequest):
+    if not model or not qdrant_client:
+        raise HTTPException(status_code=503, detail="Service not ready (model or db missing)")
+
+    if not PERPLEXITY_API_KEY:
+        print("Warning: PERPLEXITY_API_KEY not set. Falling back to regular search.")
+        # Fallback to regular search if no key
+        return await search_oils(request)
+
+    # Log inputs
+    print(f"DEBUG: Perplexity Input - Keyword: {request.query}")
+    print(f"DEBUG: Perplexity Input - Positive Feedback: {request.liked_oils}")
+    print(f"DEBUG: Perplexity Input - Negative Feedback: {request.disliked_oils}")
+
+    # 1. Call Perplexity
+    print(f"DEBUG: Perplexity request query: {request.query}")
+    oil_names = []
+    try:
+        # Resolve path to SYSTEM_PROMPT.md
+        base_dir = os.path.dirname(os.path.abspath(__file__))
+        prompt_path = os.path.join(base_dir, "SYSTEM_PROMPT.md")
+
+        # Get all available product names from Qdrant
+        available_products = _get_all_product_names()
+        products_str = ", ".join(available_products)
+
+        with open(prompt_path) as f:
+            system_prompt = f.read()
+
+        # Inject available products into system prompt
+        system_prompt = system_prompt.replace("{{ available_products }}", products_str)
+
+        # Prepare formatted user message
+        user_feeling = request.query
+        liked_str = ", ".join(request.liked_oils) if request.liked_oils else "Keine"
+        disliked_str = ", ".join(request.disliked_oils) if request.disliked_oils else "Keine"
+
+        # Resolve path to USER_PROMPT.md
+        user_prompt_path = os.path.join(base_dir, "USER_PROMPT.md")
+        with open(user_prompt_path) as f:
+            user_prompt_template = f.read()
+
+        user_content = (
+            user_prompt_template.replace("{{ user_feeling }}", user_feeling)
+            .replace("{{ liked_str }}", liked_str)
+            .replace("{{ disliked_str }}", disliked_str)
+        )
+
+        headers = {
+            "Authorization": f"Bearer {PERPLEXITY_API_KEY}",
+            "Content-Type": "application/json",
+        }
+
+        payload = {
+            "model": "sonar-pro",
+            "messages": [
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": user_content},
+            ],
+            "search_domain_filter": ["doterra.com"],
+        }
+        print(f"DEBUG: Perplexity payload: {payload}")
+
+        response = requests.post(
+            "https://api.perplexity.ai/chat/completions", headers=headers, json=payload
+        )
+        response.raise_for_status()
+
+        content = response.json()["choices"][0]["message"]["content"]
+        print(f"DEBUG: Perplexity raw response: {content}")
+
+        # Parse JSON list from content
+
+        content = content.strip()
+        if content.startswith("```json"):
+            content = content[7:]
+        if content.startswith("```"):  # sometimes it's just ```
+            content = content[3:]
+        if content.endswith("```"):
+            content = content[:-3]
+        content = content.strip()
+
+        try:
+            oil_names = json.loads(content)
+        except json.JSONDecodeError:
+            # Fallback: try to extract lines if JSON fails
+            print(f"Perplexity JSON parse failed. Content: {content}")
+            oil_names = []
+
+        if not isinstance(oil_names, list):
+            oil_names = []
+
+        # Ensure we take at most 5
+        oil_names = oil_names[:5]
+        print(f"DEBUG: Perplexity parsed oils: {oil_names}")
+
+    except Exception as e:
+        print(f"Perplexity search failed: {e}")
+        # Continue with empty perplexity results
+
+    perplexity_results = []
+    found_ids = set()
+
+    # 2. Search Qdrant for these oils using name matching with fuzzy fallback
+    if oil_names:
+        product_map = {}  # Map product names to their ids
+        product_base_names = {}  # Map base names (before parenthesis) to full names
+
+        # Build map of product names to IDs
+        points, _ = qdrant_client.scroll(
+            collection_name=QDRANT_COLLECTION, limit=1000, with_payload=True
+        )
+        while points:
+            for point in points:
+                if hasattr(point, "payload") and "product_name" in point.payload:
+                    full_name = point.payload["product_name"]
+                    product_map[full_name] = point.id
+                    # Also index by base name (before parenthesis)
+                    base_name = full_name.split("(")[0].strip()
+                    if base_name not in product_base_names:
+                        product_base_names[base_name] = full_name
+            points, _ = qdrant_client.scroll(
+                collection_name=QDRANT_COLLECTION,
+                limit=1000,
+                with_payload=True,
+                offset=len(product_map),
+            )
+
+        # Match Perplexity results to products
+        for name in oil_names:
+            full_name = None
+
+            # Try exact match first
+            if name in product_map:
+                full_name = name
+            # Try base name match (e.g., "Lavender" -> "Lavender (Lavendel)")
+            elif name.split("(")[0].strip() in product_base_names:
+                full_name = product_base_names[name.split("(")[0].strip()]
+            # Fallback: use embedding to find closest match
+            else:
+                try:
+                    name_vector = model.encode([name])[0].tolist()
+                    search_res = qdrant_client.query_points(
+                        collection_name=QDRANT_COLLECTION,
+                        query=name_vector,
+                        using=VECTOR_NAME,
+                        limit=1,
+                        with_payload=True,
+                    )
+                    if search_res.points and search_res.points[0].score > 0.8:
+                        full_name = search_res.points[0].payload["product_name"]
+                except Exception as e:
+                    print(f"Error embedding search for {name}: {e}")
+
+            # Add to results if found and not duplicate
+            if full_name and full_name in product_map:
+                product_id = product_map[full_name]
+                if product_id not in found_ids:
+                    try:
+                        points = qdrant_client.retrieve(
+                            collection_name=QDRANT_COLLECTION,
+                            ids=[product_id],
+                            with_payload=True,
+                        )
+                        if points:
+                            hit = points[0]
+                            res = SearchResult(
+                                id=hit.id,
+                                score=0.99,
+                                payload=hit.payload,
+                                source="perplexity",
+                            )
+                            perplexity_results.append(res)
+                            found_ids.add(product_id)
+                    except Exception as e:
+                        print(f"Error retrieving product {full_name}: {e}")
+
+    # 3. Regular Embedding Search for the rest
+    query_vector = model.encode([request.query])[0].tolist()
+
+    search_result_embedding = qdrant_client.query_points(
+        collection_name=QDRANT_COLLECTION,
+        query=query_vector,
+        using=VECTOR_NAME,
+        limit=request.limit + 5,  # Fetch extra to account for deduplication
+        with_payload=True,
+    )
+
+    embedding_results = []
+    for hit in search_result_embedding.points:
+        if hit.id not in found_ids:
+            embedding_results.append(
+                SearchResult(id=hit.id, score=hit.score, payload=hit.payload, source="embedding")
+            )
+
+    # Combine results
+    final_results = perplexity_results + embedding_results
+
+    return final_results[: request.limit]
 
 
 @app.get("/random", response_model=list[SearchResult])

@@ -3,7 +3,7 @@ import React, { useEffect, useState } from 'react';
 import { api } from './api';
 import type { SearchResult } from './types';
 import { OilCard } from './components/OilCard';
-import { Search, Droplets, X } from 'lucide-react';
+import { Search, Droplets, X, Sparkles } from 'lucide-react';
 
 function App() {
   const [items, setItems] = useState<SearchResult[]>([]);
@@ -44,11 +44,33 @@ function App() {
     setLoading(true);
     setError(null);
     try {
-      const results = await api.search(searchQuery);
+      const results = await api.search(searchQuery, false);
       setItems(results);
     } catch (err: any) {
       console.error(err);
       setError(err.message || 'Search failed');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handlePerplexitySearch = async () => {
+    if (!searchQuery.trim()) return;
+
+    setMode('search');
+    setLoading(true);
+    setError(null);
+    try {
+      const results = await api.search(
+        searchQuery,
+        true,
+        likedItems.map(i => i.payload.product_name),
+        dislikedItems.map(i => i.payload.product_name)
+      );
+      setItems(results);
+    } catch (err: any) {
+      console.error(err);
+      setError(err.message || 'AI Search failed');
     } finally {
       setLoading(false);
     }
@@ -158,10 +180,18 @@ function App() {
             <input
               type="text"
               placeholder="Search for 'sleep', 'energy'..."
-              className="w-full pl-10 pr-4 py-2.5 rounded-full bg-slate-100 border-none focus:ring-2 focus:ring-rose-500/20 focus:bg-white transition-all outline-none text-sm placeholder:text-slate-400 font-medium"
+              className="w-full pl-10 pr-12 py-2.5 rounded-full bg-slate-100 border-none focus:ring-2 focus:ring-rose-500/20 focus:bg-white transition-all outline-none text-sm placeholder:text-slate-400 font-medium"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
             />
+             <button
+              type="button"
+              onClick={handlePerplexitySearch}
+              className="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 rounded-full text-slate-400 hover:text-purple-600 hover:bg-purple-50 transition-colors"
+              title="AI Search (Perplexity)"
+            >
+              <Sparkles size={16} />
+            </button>
           </form>
         </div>
       </header>
@@ -288,17 +318,50 @@ function App() {
               </button>
             </div>
           ) : (
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-6">
-              {items.map((item) => (
-                <OilCard
-                  key={item.id}
-                  item={item}
-                  onLike={() => handleLike(item)}
-                  onDislike={() => handleDislike(item)}
-                  isLiked={likedItems.some(i => i.id === item.id)}
-                  isDisliked={dislikedItems.some(i => i.id === item.id)}
-                />
-              ))}
+            <div className="space-y-8">
+               {/* Perplexity Results */}
+               {items.some(item => item.source === 'perplexity') && (
+                <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+                   <h3 className="text-md font-bold text-purple-600 mb-4 flex items-center gap-2 uppercase tracking-wider text-sm">
+                    <Sparkles size={16} />
+                    AI Recommendations
+                  </h3>
+                  <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-6">
+                    {items.filter(item => item.source === 'perplexity').map((item) => (
+                      <OilCard
+                        key={item.id}
+                        item={item}
+                        onLike={() => handleLike(item)}
+                        onDislike={() => handleDislike(item)}
+                        isLiked={likedItems.some(i => i.id === item.id)}
+                        isDisliked={dislikedItems.some(i => i.id === item.id)}
+                      />
+                    ))}
+                  </div>
+                   <div className="mt-8 border-t border-slate-200" />
+                </div>
+              )}
+
+               {/* Standard/Other Results */}
+              <div>
+                 {items.some(item => item.source === 'perplexity') && (
+                    <h3 className="text-md font-bold text-slate-500 mb-4 uppercase tracking-wider text-sm">
+                      More Results
+                    </h3>
+                 )}
+                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-6">
+                  {items.filter(item => item.source !== 'perplexity').map((item) => (
+                    <OilCard
+                      key={item.id}
+                      item={item}
+                      onLike={() => handleLike(item)}
+                      onDislike={() => handleDislike(item)}
+                      isLiked={likedItems.some(i => i.id === item.id)}
+                      isDisliked={dislikedItems.some(i => i.id === item.id)}
+                    />
+                  ))}
+                </div>
+              </div>
             </div>
           )}
 

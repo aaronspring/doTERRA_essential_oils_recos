@@ -1,5 +1,9 @@
 import os
 
+from dotenv import load_dotenv
+
+load_dotenv()
+
 # Qdrant configuration: local
 QDRANT_HOST = os.getenv("QDRANT_HOST", "localhost")
 QDRANT_PORT = int(os.getenv("QDRANT_PORT", 6333))
@@ -16,3 +20,6 @@ MODEL_NAME = "jinaai/jina-embeddings-v2-base-de"
 
 # The vector name in Qdrant is derived from the model name (the slug after /)
 VECTOR_NAME = MODEL_NAME.split("/")[-1]
+
+# Perplexity API Configuration
+PERPLEXITY_API_KEY = os.getenv("PERPLEXITY_API_KEY", "")

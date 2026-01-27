@@ -12,4 +12,5 @@ export interface SearchResult {
     id: number;
     score: number;
     payload: ProductPayload;
+    source?: 'embedding' | 'perplexity';
 }

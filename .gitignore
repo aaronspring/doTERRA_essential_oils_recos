@@ -17,3 +17,5 @@ qdrant_data
 
 # ruff
 .ruff_cache/
+
+.env
