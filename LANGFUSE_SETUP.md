@@ -1,14 +1,14 @@
 # Langfuse Tracing Setup
 
-Langfuse integration for Perplexity API requests using OpenAI SDK.
+Automatic tracing of Perplexity API requests using Langfuse-instrumented OpenAI client.
 
 ## Features
 
-- **Simplified tracing**: Perplexity search requests traced with minimal overhead
-- **OpenAI SDK**: Uses OpenAI-compatible client for Perplexity API
-- **Context manager pattern**: Clean trace initialization and cleanup
+- **Automatic instrumentation**: Langfuse OpenAI client automatically traces all API calls
+- **Zero-config tracing**: No manual trace wrapping needed
+- **Rich metadata**: Operation name, user feeling, and oil preferences tracked
+- **Graceful degradation**: Falls back to regular OpenAI SDK if Langfuse unavailable
 - **Automatic flush**: Traces flushed on server shutdown
-- **Optional**: Works without Langfuse credentials
 
 ## Configuration
 
@@ -36,18 +36,21 @@ uv run uvicorn backend.main:app --reload
 
 ## What Gets Traced
 
-### Trace: `search_oils_perplexity`
+### Operation: `perplexity_oil_search`
 
-The entire Perplexity search operation is traced as a single operation with:
+Each Perplexity API call is automatically traced with:
 
-**Input:**
-- `query`: Search query
-- `liked_oils`: List of liked oils
+**Metadata:**
+- `user_feeling`: The user's search query/feeling
+- `liked_oils`: List of oils user prefers
+- `disliked_oils`: List of oils user dislikes
 
-**Automatically tracked:**
-- Execution time
-- Success/failure
-- Any exceptions during processing
+**Automatically captured:**
+- Request messages
+- Response content
+- API latency
+- Token usage (if provided by Perplexity)
+- Success/failure status
 
 ## Optional
 
@@ -63,36 +66,43 @@ Visit your Langfuse dashboard to view:
 
 ## Implementation Details
 
-### OpenAI SDK Usage
+### Langfuse-Instrumented OpenAI Client
 
-Uses OpenAI-compatible API for Perplexity:
+Automatically traces all OpenAI SDK calls using Langfuse wrapper:
 
 ```python
+# Import automatically uses Langfuse instrumentation when available
+try:
+    from langfuse.openai import OpenAI
+except ImportError:
+    from openai import OpenAI
+
 client = OpenAI(
     api_key=PERPLEXITY_API_KEY,
-    base_url="https://api.perplexity.ai"
+    base_url="https://api.perplexity.ai",
 )
+
+# This call is automatically traced by Langfuse
 response = client.chat.completions.create(
-    model="sonar-pro",
-    messages=[...]
+    model="sonar",
+    messages=[...],
+    extra_body={"search_domain_filter": ["doterra.com"]},
+    name="perplexity_oil_search",
+    metadata={
+        "user_feeling": user_feeling,
+        "liked_oils": liked_oils,
+        "disliked_oils": disliked_oils,
+    }
 )
 ```
 
-Benefits over raw HTTP requests:
-- Type-safe interface
-- Automatic error handling
-- Built-in retry logic
-- Better logging
+### Why Langfuse OpenAI Client?
 
-### Langfuse Context Manager
-
-Traces are wrapped in a context manager for clean initialization/cleanup:
-
-```python
-trace_ctx = langfuse.trace(...) if langfuse else nullcontext()
-with trace_ctx:
-    # operation code
-```
+1. **Automatic instrumentation**: No manual trace wrapping needed
+2. **Standard API**: Works exactly like regular OpenAI client
+3. **Rich tracing**: Captures all request/response details
+4. **Zero overhead**: When Langfuse disabled, uses standard SDK
+5. **Best practices**: Follows Langfuse documentation recommendations
 
 ## Files Modified
 
