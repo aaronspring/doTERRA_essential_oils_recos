@@ -157,6 +157,10 @@ If you want to update the data, the project includes several scraping scripts:
 - `scrape_single.py`: Scrapes detailed product information for each oil.
 - `EDA.ipynb`: A Jupyter Notebook for exploratory data analysis of the collected data.
 
+## Observability
+
+- perplexity API calls are traced to https://cloud.langfuse.com/project/cmkxsm8ya020cad076m8skaub for cost and quality control
+
 ## ⚖️ Disclaimer
 
 *This project is for demonstration purposes only. All product data and images belong to dōTERRA. This project is not affiliated with, endorsed by, or sponsored by dōTERRA.*
