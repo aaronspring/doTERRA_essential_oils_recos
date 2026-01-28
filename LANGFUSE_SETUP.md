@@ -1,13 +1,14 @@
 # Langfuse Tracing Setup
 
-Langfuse integration has been added to trace Perplexity API requests and the overall search flow.
+Langfuse integration for Perplexity API requests using OpenAI SDK.
 
 ## Features
 
-- **Trace tracking**: Each Perplexity search request is traced with full input/output
-- **Span tracking**: Perplexity API calls are captured as spans
-- **Error tracking**: API errors are logged as events
-- **Automatic flush**: Traces are flushed on server shutdown
+- **Simplified tracing**: Perplexity search requests traced with minimal overhead
+- **OpenAI SDK**: Uses OpenAI-compatible client for Perplexity API
+- **Context manager pattern**: Clean trace initialization and cleanup
+- **Automatic flush**: Traces flushed on server shutdown
+- **Optional**: Works without Langfuse credentials
 
 ## Configuration
 
@@ -37,27 +38,16 @@ uv run uvicorn backend.main:app --reload
 
 ### Trace: `search_oils_perplexity`
 
-Captured inputs:
+The entire Perplexity search operation is traced as a single operation with:
+
+**Input:**
 - `query`: Search query
 - `liked_oils`: List of liked oils
-- `disliked_oils`: List of disliked oils
-- `limit`: Result limit
 
-Captured outputs:
-- `results_count`: Total results
-- `perplexity_results_count`: Results from Perplexity
-- `embedding_results_count`: Results from embeddings
-- `results`: List of returned results with metadata
-
-### Span: `perplexity_api_call`
-
-Captures:
-- **Input**: Messages sent to Perplexity
-- **Output**: Parsed oil names from response
-
-### Events
-
-- **perplexity_error**: Logged if Perplexity API call fails
+**Automatically tracked:**
+- Execution time
+- Success/failure
+- Any exceptions during processing
 
 ## Optional
 
@@ -71,9 +61,42 @@ Visit your Langfuse dashboard to view:
 - Error logs
 - API usage patterns
 
+## Implementation Details
+
+### OpenAI SDK Usage
+
+Uses OpenAI-compatible API for Perplexity:
+
+```python
+client = OpenAI(
+    api_key=PERPLEXITY_API_KEY,
+    base_url="https://api.perplexity.ai"
+)
+response = client.chat.completions.create(
+    model="sonar-pro",
+    messages=[...]
+)
+```
+
+Benefits over raw HTTP requests:
+- Type-safe interface
+- Automatic error handling
+- Built-in retry logic
+- Better logging
+
+### Langfuse Context Manager
+
+Traces are wrapped in a context manager for clean initialization/cleanup:
+
+```python
+trace_ctx = langfuse.trace(...) if langfuse else nullcontext()
+with trace_ctx:
+    # operation code
+```
+
 ## Files Modified
 
-- `pyproject.toml`: Added langfuse dependency
+- `pyproject.toml`: Added langfuse and openai dependencies
 - `config.py`: Added Langfuse configuration
-- `backend/main.py`: Added tracing to perplexity endpoint
-- `.env.example`: Added Langfuse credentials template
+- `backend/main.py`: Simplified tracing using OpenAI SDK
+- `.env.example`: Updated documentation

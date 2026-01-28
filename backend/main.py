@@ -1,12 +1,12 @@
 import json
 import os
-from contextlib import asynccontextmanager
+from contextlib import asynccontextmanager, nullcontext
 
 import numpy as np
-import requests
 import torch
 from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
+from openai import OpenAI
 from pydantic import BaseModel, Field
 from qdrant_client import QdrantClient, models
 from sentence_transformers import SentenceTransformer
@@ -46,6 +46,7 @@ except ImportError:
 # Global variables for model and client
 model = None
 qdrant_client = None
+perplexity_client = None
 langfuse = None
 
 
@@ -109,7 +110,7 @@ def _get_all_product_names() -> list[str]:
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    global model, qdrant_client, langfuse
+    global model, qdrant_client, perplexity_client, langfuse
 
     # Initialize Langfuse
     _init_langfuse()
@@ -117,6 +118,13 @@ async def lifespan(app: FastAPI):
         print("Langfuse initialized successfully.")
     else:
         print("Langfuse not configured (no credentials provided).")
+
+    # Initialize Perplexity OpenAI client
+    if PERPLEXITY_API_KEY:
+        perplexity_client = OpenAI(api_key=PERPLEXITY_API_KEY, base_url="https://api.perplexity.ai")
+        print("Perplexity client initialized.")
+    else:
+        perplexity_client = None
 
     # Load Model
     print(f"Loading model: {MODEL_NAME}...")
@@ -294,130 +302,92 @@ async def recommend_oils(request: RecommendRequest):
 
 @app.post("/search/perplexity", response_model=list[SearchResult])
 async def search_oils_perplexity(request: SearchRequest):
-    if not model or not qdrant_client:
-        raise HTTPException(status_code=503, detail="Service not ready (model or db missing)")
+    if not model or not qdrant_client or not perplexity_client:
+        raise HTTPException(status_code=503, detail="Service not ready")
 
-    if not PERPLEXITY_API_KEY:
-        print("Warning: PERPLEXITY_API_KEY not set. Falling back to regular search.")
-        # Fallback to regular search if no key
-        return await search_oils(request)
-
-    # Initialize trace
-    trace = None
-    if langfuse:
-        trace = langfuse.trace(
-            name="search_oils_perplexity",
-            input={
-                "query": request.query,
-                "liked_oils": request.liked_oils,
-                "disliked_oils": request.disliked_oils,
-                "limit": request.limit,
-            },
-        )
-
-    # Log inputs
-    print(f"DEBUG: Perplexity Input - Keyword: {request.query}")
-    print(f"DEBUG: Perplexity Input - Positive Feedback: {request.liked_oils}")
-    print(f"DEBUG: Perplexity Input - Negative Feedback: {request.disliked_oils}")
-
-    # 1. Call Perplexity
-    print(f"DEBUG: Perplexity request query: {request.query}")
     oil_names = []
-    try:
-        # Create span for Perplexity API call
-        perplexity_span = None
-        if trace:
-            perplexity_span = trace.span(name="perplexity_api_call")
 
-        # Resolve path to SYSTEM_PROMPT.md
-        base_dir = os.path.dirname(os.path.abspath(__file__))
-        prompt_path = os.path.join(base_dir, "SYSTEM_PROMPT.md")
-
-        # Get all available product names from Qdrant
-        available_products = _get_all_product_names()
-        products_str = ", ".join(available_products)
-
-        with open(prompt_path) as f:
-            system_prompt = f.read()
-
-        # Inject available products into system prompt
-        system_prompt = system_prompt.replace("{{ available_products }}", products_str)
-
-        # Prepare formatted user message
-        user_feeling = request.query
-        liked_str = ", ".join(request.liked_oils) if request.liked_oils else "Keine"
-        disliked_str = ", ".join(request.disliked_oils) if request.disliked_oils else "Keine"
-
-        # Resolve path to USER_PROMPT.md
-        user_prompt_path = os.path.join(base_dir, "USER_PROMPT.md")
-        with open(user_prompt_path) as f:
-            user_prompt_template = f.read()
-
-        user_content = (
-            user_prompt_template.replace("{{ user_feeling }}", user_feeling)
-            .replace("{{ liked_str }}", liked_str)
-            .replace("{{ disliked_str }}", disliked_str)
+    # Wrap operation with langfuse trace (simplified)
+    trace_ctx = (
+        langfuse.trace(
+            name="search_oils_perplexity",
+            input={"query": request.query, "liked_oils": request.liked_oils},
         )
-
-        headers = {
-            "Authorization": f"Bearer {PERPLEXITY_API_KEY}",
-            "Content-Type": "application/json",
-        }
-
-        payload = {
-            "model": "sonar-pro",
-            "messages": [
-                {"role": "system", "content": system_prompt},
-                {"role": "user", "content": user_content},
-            ],
-            "search_domain_filter": ["doterra.com"],
-        }
-        print(f"DEBUG: Perplexity payload: {payload}")
-
-        if perplexity_span:
-            perplexity_span.update(input={"messages": payload["messages"]})
-
-        response = requests.post(
-            "https://api.perplexity.ai/chat/completions", headers=headers, json=payload
-        )
-        response.raise_for_status()
-
-        content = response.json()["choices"][0]["message"]["content"]
-        print(f"DEBUG: Perplexity raw response: {content}")
-
-        # Parse JSON list from content
-
-        content = content.strip()
-        if content.startswith("```json"):
-            content = content[7:]
-        if content.startswith("```"):  # sometimes it's just ```
-            content = content[3:]
-        if content.endswith("```"):
-            content = content[:-3]
-        content = content.strip()
-
+        if langfuse
+        else nullcontext()
+    )
+    with trace_ctx:
         try:
-            oil_names = json.loads(content)
-        except json.JSONDecodeError:
-            # Fallback: try to extract lines if JSON fails
-            print(f"Perplexity JSON parse failed. Content: {content}")
-            oil_names = []
+            # Resolve path to SYSTEM_PROMPT.md
+            base_dir = os.path.dirname(os.path.abspath(__file__))
+            prompt_path = os.path.join(base_dir, "SYSTEM_PROMPT.md")
 
-        if not isinstance(oil_names, list):
-            oil_names = []
+            # Get all available product names from Qdrant
+            available_products = _get_all_product_names()
+            products_str = ", ".join(available_products)
 
-        # Ensure we take at most 5
-        oil_names = oil_names[:5]
-        print(f"DEBUG: Perplexity parsed oils: {oil_names}")
+            with open(prompt_path) as f:
+                system_prompt = f.read()
 
-        if perplexity_span:
-            perplexity_span.end(output={"oil_names": oil_names})
+            # Inject available products into system prompt
+            system_prompt = system_prompt.replace("{{ available_products }}", products_str)
 
-    except Exception as e:
-        print(f"Perplexity search failed: {e}")
-        if trace:
-            trace.event(name="perplexity_error", input={"error": str(e)})
-        # Continue with empty perplexity results
+            # Prepare formatted user message
+            user_feeling = request.query
+            liked_str = ", ".join(request.liked_oils) if request.liked_oils else "Keine"
+            disliked_str = ", ".join(request.disliked_oils) if request.disliked_oils else "Keine"
+
+            # Resolve path to USER_PROMPT.md
+            user_prompt_path = os.path.join(base_dir, "USER_PROMPT.md")
+            with open(user_prompt_path) as f:
+                user_prompt_template = f.read()
+
+            user_content = (
+                user_prompt_template.replace("{{ user_feeling }}", user_feeling)
+                .replace("{{ liked_str }}", liked_str)
+                .replace("{{ disliked_str }}", disliked_str)
+            )
+
+            # Call Perplexity using OpenAI SDK
+            response = perplexity_client.chat.completions.create(
+                model="sonar-pro",
+                messages=[
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user", "content": user_content},
+                ],
+                extra_headers={"search_domain_filter": ["doterra.com"]},
+            )
+
+            content = response.choices[0].message.content
+            print(f"DEBUG: Perplexity raw response: {content}")
+
+            # Parse JSON list from content
+            content = content.strip()
+            if content.startswith("```json"):
+                content = content[7:]
+            if content.startswith("```"):  # sometimes it's just ```
+                content = content[3:]
+            if content.endswith("```"):
+                content = content[:-3]
+            content = content.strip()
+
+            try:
+                oil_names = json.loads(content)
+            except json.JSONDecodeError:
+                # Fallback: try to extract lines if JSON fails
+                print(f"Perplexity JSON parse failed. Content: {content}")
+                oil_names = []
+
+            if not isinstance(oil_names, list):
+                oil_names = []
+
+            # Ensure we take at most 5
+            oil_names = oil_names[:5]
+            print(f"DEBUG: Perplexity parsed oils: {oil_names}")
+
+        except Exception as e:
+            print(f"Perplexity search failed: {e}")
+            # Continue with empty perplexity results
 
     perplexity_results = []
     found_ids = set()
@@ -516,25 +486,6 @@ async def search_oils_perplexity(request: SearchRequest):
 
     # Combine results
     final_results = perplexity_results + embedding_results
-
-    # End trace
-    if trace:
-        trace.end(
-            output={
-                "results_count": len(final_results),
-                "perplexity_results_count": len(perplexity_results),
-                "embedding_results_count": len(embedding_results),
-                "results": [
-                    {
-                        "id": r.id,
-                        "score": r.score,
-                        "source": r.source,
-                        "product_name": r.payload.product_name,
-                    }
-                    for r in final_results[: request.limit]
-                ],
-            }
-        )
 
     return final_results[: request.limit]
 
