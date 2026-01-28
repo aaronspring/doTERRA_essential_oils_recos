@@ -355,7 +355,7 @@ async def search_oils_perplexity(request: SearchRequest):
                     {"role": "system", "content": system_prompt},
                     {"role": "user", "content": user_content},
                 ],
-                extra_headers={"search_domain_filter": ["doterra.com"]},
+                extra_headers={"search_domain_filter": json.dumps(["doterra.com"])},
             )
 
             content = response.choices[0].message.content
