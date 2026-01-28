@@ -340,6 +340,7 @@ async def search_oils_perplexity(request: SearchRequest):
         )
 
         # Langfuse-instrumented OpenAI client
+        # Langfuse automatically traces this call
         response = perplexity_client.chat.completions.create(
             model="sonar",
             messages=[
@@ -347,12 +348,6 @@ async def search_oils_perplexity(request: SearchRequest):
                 {"role": "user", "content": user_content},
             ],
             extra_body={"search_domain_filter": ["doterra.com"]},
-            name="perplexity_oil_search",
-            metadata={
-                "user_feeling": user_feeling,
-                "liked_oils": request.liked_oils,
-                "disliked_oils": request.disliked_oils,
-            },
         )
 
         content = response.choices[0].message.content
