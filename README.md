@@ -46,7 +46,9 @@ flowchart LR
 	subgraph be[Backend]
 		BE[FastAPI]
 		API[Discovery / Recommendation API]
+		PLEX[Perplexity Search Endpoint]
 		BE --> API
+		BE --> PLEX
 	end
 
 	subgraph model[Embeddings Service]
@@ -55,6 +57,10 @@ flowchart LR
 
 	subgraph q[Qdrant]
 		Q[Qdrant Vector DB]
+	end
+
+	subgraph ext[External Services]
+		PLEX_API[Perplexity AI API]
 	end
 
 	subgraph ingest[Data Pipeline]
@@ -67,6 +73,7 @@ flowchart LR
 	BE --> EMB
 	EMB --> Q
 	BE --> Q
+	PLEX --> PLEX_API
 	SCR --> ING --> Q
 
 	Docker[Docker Compose]
@@ -74,6 +81,7 @@ flowchart LR
 	Docker -.-> Q
 
 	style Docker stroke-dasharray: 5 5
+	style ext fill:#f9f,stroke:#333
 ```
 
 ## 🚀 Getting Started
