@@ -12,6 +12,7 @@ This demo uses a **"Discovery" paradigm**:
 1. You are presented with a set of oils. Optionally you can enter a search query to rank the oils related to your query.
 2. You can **Like** or **Dislike** specific products.
 3. The system uses Qdrant's [Recommendation API](https://qdrant.tech/documentation/concepts/search/#recommendation-api) to find other oils that are semantically similar to your likes and dissimilar to your dislikes.
+4. Contrasting with perplexity prompting based recommendations.
 
 ## 🧠 Differences from Food Discovery
 
@@ -20,6 +21,7 @@ While inspired by the Food Discovery demo, there are key implementation differen
 - **Modality**: The Food Discovery demo uses **image-based** search (CLIP embeddings). This project focuses on **text-based** semantic search.
 - **Embeddings**: We use the `jinaai/jina-embeddings-v2-base-de` model to generate embeddings from a "serialized" text representation of each oil (including its name, sub-name, description, and lifestyle benefits). This model is finetuned to semantic understand and retrieval in German language.
 - **Data**: The dataset is custom-scraped from the dōTERRA website, containing detailed product information and high-quality product images.
+- **Alternative**: perplexity API as alternative search engine (baseline I failed to beat)
 
 ## 🏗️ Architecture
 
@@ -27,6 +29,7 @@ The project consists of three main components:
 - **Backend (FastAPI)**: Connects to Qdrant, handles vectorization of search queries, and exposes discovery/recommendation endpoints.
 - **Frontend (React + Vite)**: A modern, responsive UI for browsing oils and interacting with the recommendation engine.
 - **Qdrant**: The vector search engine that stores oil embeddings and metadata, performing high-performance similarity searches.
+- **Perplexity API**: Instead of Qdrant, prompt perplexity for recommendations.
 
 Below is a high-level architecture diagram (Mermaid) illustrating how the pieces fit together.
 
@@ -80,6 +83,7 @@ flowchart LR
 - [Docker](https://www.docker.com/) and [Docker Compose](https://docs.docker.com/compose/)
 - [uv](https://docs.astral.sh/uv/getting-started/installation/)
 - [Node.js](https://nodejs.org/en/download)
+- optional: [perplexity](https://www.perplexity.ai) API key
 
 ---
 
