@@ -7,10 +7,17 @@ import requests
 import torch
 from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
-from langfuse import Langfuse
 from pydantic import BaseModel, Field
 from qdrant_client import QdrantClient, models
 from sentence_transformers import SentenceTransformer
+
+# Optional Langfuse tracing
+HAS_LANGFUSE = True
+try:
+    from langfuse import Langfuse
+except (ImportError, RuntimeError):
+    HAS_LANGFUSE = False
+    Langfuse = type(None)  # type: ignore [assignment]
 
 try:
     from config import (
@@ -45,12 +52,21 @@ langfuse = None
 def _init_langfuse():
     """Initialize Langfuse client if credentials are available."""
     global langfuse
+    if not HAS_LANGFUSE:
+        print("Langfuse not available (Python 3.14+ not supported yet)")
+        langfuse = None
+        return
+
     if LANGFUSE_PUBLIC_KEY and LANGFUSE_SECRET_KEY:
-        langfuse = Langfuse(
-            public_key=LANGFUSE_PUBLIC_KEY,
-            secret_key=LANGFUSE_SECRET_KEY,
-            host=LANGFUSE_HOST,
-        )
+        try:
+            langfuse = Langfuse(
+                public_key=LANGFUSE_PUBLIC_KEY,
+                secret_key=LANGFUSE_SECRET_KEY,
+                host=LANGFUSE_HOST,
+            )
+        except Exception as e:
+            print(f"Failed to initialize Langfuse: {e}")
+            langfuse = None
     else:
         langfuse = None
 
