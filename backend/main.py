@@ -1,12 +1,11 @@
 import json
 import os
-from contextlib import asynccontextmanager, nullcontext
+from contextlib import asynccontextmanager
 
 import numpy as np
 import torch
 from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
-from openai import OpenAI
 from pydantic import BaseModel, Field
 from qdrant_client import QdrantClient, models
 from sentence_transformers import SentenceTransformer
@@ -15,9 +14,11 @@ from sentence_transformers import SentenceTransformer
 HAS_LANGFUSE = True
 try:
     from langfuse import Langfuse
+    from langfuse.openai import OpenAI
 except (ImportError, RuntimeError):
     HAS_LANGFUSE = False
     Langfuse = type(None)  # type: ignore [assignment]
+    from openai import OpenAI  # type: ignore [no-redef]
 
 try:
     from config import (
@@ -307,87 +308,83 @@ async def search_oils_perplexity(request: SearchRequest):
 
     oil_names = []
 
-    # Wrap operation with langfuse trace (simplified)
-    trace_ctx = (
-        langfuse.trace(
-            name="search_oils_perplexity",
-            input={"query": request.query, "liked_oils": request.liked_oils},
+    try:
+        # Resolve path to SYSTEM_PROMPT.md
+        base_dir = os.path.dirname(os.path.abspath(__file__))
+        prompt_path = os.path.join(base_dir, "SYSTEM_PROMPT.md")
+
+        # Get all available product names from Qdrant
+        available_products = _get_all_product_names()
+        products_str = ", ".join(available_products)
+
+        with open(prompt_path) as f:
+            system_prompt = f.read()
+
+        # Inject available products into system prompt
+        system_prompt = system_prompt.replace("{{ available_products }}", products_str)
+
+        # Prepare formatted user message
+        user_feeling = request.query
+        liked_str = ", ".join(request.liked_oils) if request.liked_oils else "Keine"
+        disliked_str = ", ".join(request.disliked_oils) if request.disliked_oils else "Keine"
+
+        # Resolve path to USER_PROMPT.md
+        user_prompt_path = os.path.join(base_dir, "USER_PROMPT.md")
+        with open(user_prompt_path) as f:
+            user_prompt_template = f.read()
+
+        user_content = (
+            user_prompt_template.replace("{{ user_feeling }}", user_feeling)
+            .replace("{{ liked_str }}", liked_str)
+            .replace("{{ disliked_str }}", disliked_str)
         )
-        if langfuse
-        else nullcontext()
-    )
-    with trace_ctx:
+
+        # Langfuse-instrumented OpenAI client
+        response = perplexity_client.chat.completions.create(
+            model="sonar",
+            messages=[
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": user_content},
+            ],
+            extra_body={"search_domain_filter": ["doterra.com"]},
+            name="perplexity_oil_search",
+            metadata={
+                "user_feeling": user_feeling,
+                "liked_oils": request.liked_oils,
+                "disliked_oils": request.disliked_oils,
+            },
+        )
+
+        content = response.choices[0].message.content
+        print(f"DEBUG: Perplexity raw response: {content}")
+
+        # Parse JSON list from content
+        content = content.strip()
+        if content.startswith("```json"):
+            content = content[7:]
+        if content.startswith("```"):  # sometimes it's just ```
+            content = content[3:]
+        if content.endswith("```"):
+            content = content[:-3]
+        content = content.strip()
+
         try:
-            # Resolve path to SYSTEM_PROMPT.md
-            base_dir = os.path.dirname(os.path.abspath(__file__))
-            prompt_path = os.path.join(base_dir, "SYSTEM_PROMPT.md")
+            oil_names = json.loads(content)
+        except json.JSONDecodeError:
+            # Fallback: try to extract lines if JSON fails
+            print(f"Perplexity JSON parse failed. Content: {content}")
+            oil_names = []
 
-            # Get all available product names from Qdrant
-            available_products = _get_all_product_names()
-            products_str = ", ".join(available_products)
+        if not isinstance(oil_names, list):
+            oil_names = []
 
-            with open(prompt_path) as f:
-                system_prompt = f.read()
+        # Ensure we take at most 5
+        oil_names = oil_names[:5]
+        print(f"DEBUG: Perplexity parsed oils: {oil_names}")
 
-            # Inject available products into system prompt
-            system_prompt = system_prompt.replace("{{ available_products }}", products_str)
-
-            # Prepare formatted user message
-            user_feeling = request.query
-            liked_str = ", ".join(request.liked_oils) if request.liked_oils else "Keine"
-            disliked_str = ", ".join(request.disliked_oils) if request.disliked_oils else "Keine"
-
-            # Resolve path to USER_PROMPT.md
-            user_prompt_path = os.path.join(base_dir, "USER_PROMPT.md")
-            with open(user_prompt_path) as f:
-                user_prompt_template = f.read()
-
-            user_content = (
-                user_prompt_template.replace("{{ user_feeling }}", user_feeling)
-                .replace("{{ liked_str }}", liked_str)
-                .replace("{{ disliked_str }}", disliked_str)
-            )
-
-            # Call Perplexity using OpenAI SDK
-            response = perplexity_client.chat.completions.create(
-                model="sonar-pro",
-                messages=[
-                    {"role": "system", "content": system_prompt},
-                    {"role": "user", "content": user_content},
-                ],
-                extra_headers={"search_domain_filter": json.dumps(["doterra.com"])},
-            )
-
-            content = response.choices[0].message.content
-            print(f"DEBUG: Perplexity raw response: {content}")
-
-            # Parse JSON list from content
-            content = content.strip()
-            if content.startswith("```json"):
-                content = content[7:]
-            if content.startswith("```"):  # sometimes it's just ```
-                content = content[3:]
-            if content.endswith("```"):
-                content = content[:-3]
-            content = content.strip()
-
-            try:
-                oil_names = json.loads(content)
-            except json.JSONDecodeError:
-                # Fallback: try to extract lines if JSON fails
-                print(f"Perplexity JSON parse failed. Content: {content}")
-                oil_names = []
-
-            if not isinstance(oil_names, list):
-                oil_names = []
-
-            # Ensure we take at most 5
-            oil_names = oil_names[:5]
-            print(f"DEBUG: Perplexity parsed oils: {oil_names}")
-
-        except Exception as e:
-            print(f"Perplexity search failed: {e}")
-            # Continue with empty perplexity results
+    except Exception as e:
+        print(f"Perplexity search failed: {e}")
+        # Continue with empty perplexity results
 
     perplexity_results = []
     found_ids = set()
