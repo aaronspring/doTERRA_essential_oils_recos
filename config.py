@@ -23,3 +23,8 @@ VECTOR_NAME = MODEL_NAME.split("/")[-1]
 
 # Perplexity API Configuration
 PERPLEXITY_API_KEY = os.getenv("PERPLEXITY_API_KEY", "")
+
+# Langfuse Configuration
+LANGFUSE_PUBLIC_KEY = os.getenv("LANGFUSE_PUBLIC_KEY", "")
+LANGFUSE_SECRET_KEY = os.getenv("LANGFUSE_SECRET_KEY", "")
+LANGFUSE_HOST = os.getenv("LANGFUSE_HOST", "https://cloud.langfuse.com")

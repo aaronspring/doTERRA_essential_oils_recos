@@ -7,12 +7,16 @@ import requests
 import torch
 from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
+from langfuse import Langfuse
 from pydantic import BaseModel, Field
 from qdrant_client import QdrantClient, models
 from sentence_transformers import SentenceTransformer
 
 try:
     from config import (
+        LANGFUSE_HOST,
+        LANGFUSE_PUBLIC_KEY,
+        LANGFUSE_SECRET_KEY,
         MODEL_NAME,
         PERPLEXITY_API_KEY,
         QDRANT_COLLECTION,
@@ -28,10 +32,27 @@ except ImportError:
     MODEL_NAME = "jinaai/jina-embeddings-v2-base-de"
     VECTOR_NAME = MODEL_NAME.split("/")[-1]
     PERPLEXITY_API_KEY = os.getenv("PERPLEXITY_API_KEY", "")
+    LANGFUSE_PUBLIC_KEY = os.getenv("LANGFUSE_PUBLIC_KEY", "")
+    LANGFUSE_SECRET_KEY = os.getenv("LANGFUSE_SECRET_KEY", "")
+    LANGFUSE_HOST = os.getenv("LANGFUSE_HOST", "https://cloud.langfuse.com")
 
 # Global variables for model and client
 model = None
 qdrant_client = None
+langfuse = None
+
+
+def _init_langfuse():
+    """Initialize Langfuse client if credentials are available."""
+    global langfuse
+    if LANGFUSE_PUBLIC_KEY and LANGFUSE_SECRET_KEY:
+        langfuse = Langfuse(
+            public_key=LANGFUSE_PUBLIC_KEY,
+            secret_key=LANGFUSE_SECRET_KEY,
+            host=LANGFUSE_HOST,
+        )
+    else:
+        langfuse = None
 
 
 def _get_all_product_names() -> list[str]:
@@ -72,7 +93,14 @@ def _get_all_product_names() -> list[str]:
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    global model, qdrant_client
+    global model, qdrant_client, langfuse
+
+    # Initialize Langfuse
+    _init_langfuse()
+    if langfuse:
+        print("Langfuse initialized successfully.")
+    else:
+        print("Langfuse not configured (no credentials provided).")
 
     # Load Model
     print(f"Loading model: {MODEL_NAME}...")
@@ -110,6 +138,8 @@ async def lifespan(app: FastAPI):
 
     # Cleanup
     print("Shutting down...")
+    if langfuse:
+        langfuse.flush()
 
 
 app = FastAPI(lifespan=lifespan)
@@ -256,6 +286,19 @@ async def search_oils_perplexity(request: SearchRequest):
         # Fallback to regular search if no key
         return await search_oils(request)
 
+    # Initialize trace
+    trace = None
+    if langfuse:
+        trace = langfuse.trace(
+            name="search_oils_perplexity",
+            input={
+                "query": request.query,
+                "liked_oils": request.liked_oils,
+                "disliked_oils": request.disliked_oils,
+                "limit": request.limit,
+            },
+        )
+
     # Log inputs
     print(f"DEBUG: Perplexity Input - Keyword: {request.query}")
     print(f"DEBUG: Perplexity Input - Positive Feedback: {request.liked_oils}")
@@ -265,6 +308,11 @@ async def search_oils_perplexity(request: SearchRequest):
     print(f"DEBUG: Perplexity request query: {request.query}")
     oil_names = []
     try:
+        # Create span for Perplexity API call
+        perplexity_span = None
+        if trace:
+            perplexity_span = trace.span(name="perplexity_api_call")
+
         # Resolve path to SYSTEM_PROMPT.md
         base_dir = os.path.dirname(os.path.abspath(__file__))
         prompt_path = os.path.join(base_dir, "SYSTEM_PROMPT.md")
@@ -310,6 +358,9 @@ async def search_oils_perplexity(request: SearchRequest):
         }
         print(f"DEBUG: Perplexity payload: {payload}")
 
+        if perplexity_span:
+            perplexity_span.update(input={"messages": payload["messages"]})
+
         response = requests.post(
             "https://api.perplexity.ai/chat/completions", headers=headers, json=payload
         )
@@ -343,8 +394,13 @@ async def search_oils_perplexity(request: SearchRequest):
         oil_names = oil_names[:5]
         print(f"DEBUG: Perplexity parsed oils: {oil_names}")
 
+        if perplexity_span:
+            perplexity_span.end(output={"oil_names": oil_names})
+
     except Exception as e:
         print(f"Perplexity search failed: {e}")
+        if trace:
+            trace.event(name="perplexity_error", input={"error": str(e)})
         # Continue with empty perplexity results
 
     perplexity_results = []
@@ -444,6 +500,25 @@ async def search_oils_perplexity(request: SearchRequest):
 
     # Combine results
     final_results = perplexity_results + embedding_results
+
+    # End trace
+    if trace:
+        trace.end(
+            output={
+                "results_count": len(final_results),
+                "perplexity_results_count": len(perplexity_results),
+                "embedding_results_count": len(embedding_results),
+                "results": [
+                    {
+                        "id": r.id,
+                        "score": r.score,
+                        "source": r.source,
+                        "product_name": r.payload.product_name,
+                    }
+                    for r in final_results[: request.limit]
+                ],
+            }
+        )
 
     return final_results[: request.limit]
 
