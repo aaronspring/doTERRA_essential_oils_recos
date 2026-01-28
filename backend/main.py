@@ -47,7 +47,6 @@ except ImportError:
 # Global variables for model and client
 model = None
 qdrant_client = None
-perplexity_client = None
 langfuse = None
 
 
@@ -111,7 +110,7 @@ def _get_all_product_names() -> list[str]:
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    global model, qdrant_client, perplexity_client, langfuse
+    global model, qdrant_client, langfuse
 
     # Initialize Langfuse
     _init_langfuse()
@@ -119,13 +118,6 @@ async def lifespan(app: FastAPI):
         print("Langfuse initialized successfully.")
     else:
         print("Langfuse not configured (no credentials provided).")
-
-    # Initialize Perplexity OpenAI client
-    if PERPLEXITY_API_KEY:
-        perplexity_client = OpenAI(api_key=PERPLEXITY_API_KEY, base_url="https://api.perplexity.ai")
-        print("Perplexity client initialized.")
-    else:
-        perplexity_client = None
 
     # Load Model
     print(f"Loading model: {MODEL_NAME}...")
@@ -303,7 +295,7 @@ async def recommend_oils(request: RecommendRequest):
 
 @app.post("/search/perplexity", response_model=list[SearchResult])
 async def search_oils_perplexity(request: SearchRequest):
-    if not model or not qdrant_client or not perplexity_client:
+    if not model or not qdrant_client or not PERPLEXITY_API_KEY:
         raise HTTPException(status_code=503, detail="Service not ready")
 
     oil_names = []
@@ -333,21 +325,32 @@ async def search_oils_perplexity(request: SearchRequest):
         with open(user_prompt_path) as f:
             user_prompt_template = f.read()
 
-        user_content = (
+        user_prompt = (
             user_prompt_template.replace("{{ user_feeling }}", user_feeling)
             .replace("{{ liked_str }}", liked_str)
             .replace("{{ disliked_str }}", disliked_str)
         )
 
         # Langfuse-instrumented OpenAI client
-        # Langfuse automatically traces this call
-        response = perplexity_client.chat.completions.create(
+        search_domains = ["doterra.com"]
+        client = OpenAI(
+            api_key=PERPLEXITY_API_KEY,
+            base_url="https://api.perplexity.ai",
+        )
+
+        response = client.chat.completions.create(
             model="sonar",
             messages=[
                 {"role": "system", "content": system_prompt},
-                {"role": "user", "content": user_content},
+                {"role": "user", "content": user_prompt},
             ],
-            extra_body={"search_domain_filter": ["doterra.com"]},
+            extra_body={"search_domain_filter": search_domains},
+            name="essential_oils_recos",
+            metadata={
+                "user_feeling": user_feeling,
+                "liked_oils": liked_str,
+                "disliked_oils": disliked_str,
+            },
         )
 
         content = response.choices[0].message.content
