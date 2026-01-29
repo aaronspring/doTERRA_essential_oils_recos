@@ -17,8 +17,8 @@ try:
     from langfuse.openai import OpenAI
 except (ImportError, RuntimeError):
     HAS_LANGFUSE = False
-    Langfuse = type(None)  # type: ignore [assignment]
-    from openai import OpenAI  # type: ignore [no-redef]
+    Langfuse = type(None)  # type: ignore
+    from openai import OpenAI
 
 try:
     from config import (
@@ -37,7 +37,7 @@ except ImportError:
     QDRANT_HOST = os.getenv("QDRANT_HOST", "localhost")
     QDRANT_PORT = int(os.getenv("QDRANT_PORT", 6333))
     QDRANT_COLLECTION = os.getenv("QDRANT_COLLECTION", "essential_oils")
-    MODEL_NAME = "jinaai/jina-embeddings-v2-base-de"
+    MODEL_NAME: str = "jinaai/jina-embeddings-v2-base-de"
     VECTOR_NAME = MODEL_NAME.split("/")[-1]
     PERPLEXITY_API_KEY = os.getenv("PERPLEXITY_API_KEY", "")
     LANGFUSE_PUBLIC_KEY = os.getenv("LANGFUSE_PUBLIC_KEY", "")
@@ -167,7 +167,10 @@ app = FastAPI(lifespan=lifespan)
 
 # CORS configuration
 # In production, restrict to specific origins
-ALLOWED_ORIGINS = os.getenv("ALLOWED_ORIGINS", "http://localhost:5173").split(",")
+# Default includes localhost for development
+ALLOWED_ORIGINS = os.getenv("ALLOWED_ORIGINS", "http://localhost:5173,http://localhost:3000").split(
+    ","
+)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=ALLOWED_ORIGINS,
