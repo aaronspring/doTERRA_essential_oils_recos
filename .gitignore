@@ -19,3 +19,5 @@ qdrant_data
 .ruff_cache/
 
 .env
+.vercel
+.env*.local
