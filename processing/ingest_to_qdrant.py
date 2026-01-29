@@ -15,6 +15,7 @@ from tqdm import tqdm  # noqa: E402
 
 from config import (  # noqa: E402
     MODEL_NAME,
+    QDRANT_API_KEY,
     QDRANT_COLLECTION,
     QDRANT_HOST,
     QDRANT_PORT,
@@ -85,15 +86,24 @@ def main():
     vector_size = embeddings.shape[1]
     print(f"Generated {len(embeddings)} embeddings with dimension {vector_size}.")
 
-    # 5. Connect to Qdrant (Local Docker)
+    # 5. Connect to Qdrant (Cloud or Local)
     print(f"Connecting to Qdrant at {qdrant_host}:{qdrant_port}...")
     try:
-        client = QdrantClient(host=qdrant_host, port=qdrant_port)
+        if QDRANT_API_KEY:
+            # Cloud connection
+            client = QdrantClient(
+                url=qdrant_host,
+                api_key=QDRANT_API_KEY,
+                prefer_grpc=False,
+            )
+        else:
+            # Local connection
+            client = QdrantClient(host=qdrant_host, port=qdrant_port)
         # Test connection
         client.get_collections()
     except Exception as e:
         print(f"Failed to connect to Qdrant: {e}")
-        print("Make sure Docker container is running: 'docker-compose up -d'")
+        print("Check Qdrant URL, port, and API key in .env file")
         return
 
     # 6. Create collection

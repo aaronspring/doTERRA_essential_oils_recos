@@ -4,15 +4,11 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-# Qdrant configuration: local
+# Qdrant configuration
 QDRANT_HOST = os.getenv("QDRANT_HOST", "localhost")
 QDRANT_PORT = int(os.getenv("QDRANT_PORT", 6333))
 QDRANT_COLLECTION = os.getenv("QDRANT_COLLECTION", "essential_oils")
-
-# Qdrant configuration: remote
-# QDRANT_HOST = os.getenv("QDRANT_HOST", "qdrant url")
-# QDRANT_PORT = int(os.getenv("QDRANT_PORT", 6333))
-# QDRANT_COLLECTION = os.getenv("QDRANT_COLLECTION", "essential_oils")
+QDRANT_API_KEY = os.getenv("QDRANT_API_KEY", "")
 
 # Embedding model configuration
 # Using smaller model to fit within Vercel's 8GB build environment

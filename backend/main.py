@@ -27,6 +27,7 @@ try:
         LANGFUSE_SECRET_KEY,
         MODEL_NAME,
         PERPLEXITY_API_KEY,
+        QDRANT_API_KEY,
         QDRANT_COLLECTION,
         QDRANT_HOST,
         QDRANT_PORT,
@@ -37,6 +38,7 @@ except ImportError:
     QDRANT_HOST = os.getenv("QDRANT_HOST", "localhost")
     QDRANT_PORT = int(os.getenv("QDRANT_PORT", 6333))
     QDRANT_COLLECTION = os.getenv("QDRANT_COLLECTION", "essential_oils")
+    QDRANT_API_KEY = os.getenv("QDRANT_API_KEY", "")
     MODEL_NAME: str = "jinaai/jina-embeddings-v2-base-de"
     VECTOR_NAME = MODEL_NAME.split("/")[-1]
     PERPLEXITY_API_KEY = os.getenv("PERPLEXITY_API_KEY", "")
@@ -139,7 +141,16 @@ async def lifespan(app: FastAPI):
     # Initialize Qdrant Client
     print(f"Connecting to Qdrant at {QDRANT_HOST}:{QDRANT_PORT}...")
     try:
-        qdrant_client = QdrantClient(host=QDRANT_HOST, port=QDRANT_PORT)
+        if QDRANT_API_KEY:
+            # Cloud connection
+            qdrant_client = QdrantClient(
+                url=QDRANT_HOST,
+                api_key=QDRANT_API_KEY,
+                prefer_grpc=False,
+            )
+        else:
+            # Local connection
+            qdrant_client = QdrantClient(host=QDRANT_HOST, port=QDRANT_PORT)
         # Check if collection exists
         collections = qdrant_client.get_collections()
         exists = any(c.name == QDRANT_COLLECTION for c in collections.collections)
