@@ -9,6 +9,9 @@ wheels/
 # Virtual environments
 .venv
 
+# Node modules
+node_modules/
+
 # csv files
 *.csv
 
