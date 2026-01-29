@@ -14,13 +14,35 @@ function App() {
   const [dislikedItems, setDislikedItems] = useState<SearchResult[]>([]);
 
   const [searchQuery, setSearchQuery] = useState('');
-  const [mode, setMode] = useState<'discovery' | 'search'>('discovery');
   const [error, setError] = useState<string | null>(null);
+  const [backendReady, setBackendReady] = useState(false);
+  const [checkingBackend, setCheckingBackend] = useState(true);
+
+  // Check if backend is available on mount
+  useEffect(() => {
+    const checkBackend = async () => {
+      try {
+        const response = await fetch(
+          `${import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000'}/`,
+          { method: 'GET', signal: AbortSignal.timeout(3000) }
+        );
+        setBackendReady(response.ok);
+      } catch {
+        setBackendReady(false);
+      } finally {
+        setCheckingBackend(false);
+      }
+    };
+
+    checkBackend();
+  }, []);
 
   // Initial load
   useEffect(() => {
-    loadInitialDiscovery();
-  }, []);
+    if (!checkingBackend) {
+      loadInitialDiscovery();
+    }
+  }, [checkingBackend]);
 
   const loadInitialDiscovery = async () => {
     setLoading(true);
@@ -40,7 +62,6 @@ function App() {
     e.preventDefault();
     if (!searchQuery.trim()) return;
 
-    setMode('search');
     setLoading(true);
     setError(null);
     try {
@@ -57,7 +78,6 @@ function App() {
   const handlePerplexitySearch = async () => {
     if (!searchQuery.trim()) return;
 
-    setMode('search');
     setLoading(true);
     setError(null);
     try {
@@ -79,6 +99,7 @@ function App() {
   const clearAllFeedback = () => {
     setLikedItems([]);
     setDislikedItems([]);
+    setSearchQuery('');
     loadInitialDiscovery();
   };
 
@@ -160,12 +181,33 @@ function App() {
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-800 font-sans">
+      {/* Backend Loading Warning */}
+      {checkingBackend && (
+        <div className="bg-amber-50 border-b border-amber-200 px-4 py-3 text-center">
+          <p className="text-sm text-amber-800 font-medium flex items-center justify-center gap-2">
+            <svg className="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg>
+            Initializing backend... (this may take up to 1 minute)
+          </p>
+        </div>
+      )}
+
+      {!checkingBackend && !backendReady && (
+        <div className="bg-orange-50 border-b border-orange-200 px-4 py-3 text-center">
+          <p className="text-sm text-orange-800 font-medium">
+            ⏳ Backend is starting up. Please wait... (typically 30-60 seconds)
+          </p>
+        </div>
+      )}
+
       {/* Header */}
       <header className="sticky top-0 z-50 bg-white/90 backdrop-blur-md border-b border-slate-200 shadow-sm">
         <div className="max-w-7xl mx-auto px-4 py-3 flex flex-col md:flex-row items-center justify-between gap-4">
           <div
             className="flex items-center gap-2 cursor-pointer group"
-            onClick={() => { setMode('discovery'); clearAllFeedback(); }}
+            onClick={() => clearAllFeedback()}
           >
             <div className="bg-gradient-to-br from-rose-500 to-purple-600 p-2 rounded-xl text-white shadow-lg group-hover:shadow-rose-500/30 transition-shadow">
               <Droplets size={20} />
