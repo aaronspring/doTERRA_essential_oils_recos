@@ -15,8 +15,10 @@ QDRANT_COLLECTION = os.getenv("QDRANT_COLLECTION", "essential_oils")
 # QDRANT_COLLECTION = os.getenv("QDRANT_COLLECTION", "essential_oils")
 
 # Embedding model configuration
-# We use Jina Embeddings v2 base German model
-MODEL_NAME = "jinaai/jina-embeddings-v2-base-de"
+# Using smaller model to fit within Vercel's 8GB build environment
+# all-MiniLM-L6-v2: ~90MB, 384-dim embeddings
+# Previous: jinaai/jina-embeddings-v2-base-de (~500MB)
+MODEL_NAME = "all-MiniLM-L6-v2"
 
 # The vector name in Qdrant is derived from the model name (the slug after /)
 VECTOR_NAME = MODEL_NAME.split("/")[-1]
