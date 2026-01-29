@@ -125,12 +125,16 @@ async def lifespan(app: FastAPI):
 
     print(f"Using device: {device}")
 
-    try:
-        model = SentenceTransformer(MODEL_NAME, device=device, trust_remote_code=True)
-        print("Model loaded successfully.")
-    except Exception as e:
-        print(f"Error loading model: {e}")
-        raise e
+    # Skip model loading during Vercel build to save memory
+    if os.getenv("SKIP_MODEL_LOAD") != "true":
+        try:
+            model = SentenceTransformer(MODEL_NAME, device=device, trust_remote_code=True)
+            print("Model loaded successfully.")
+        except Exception as e:
+            print(f"Error loading model: {e}")
+            raise e
+    else:
+        print("Model loading skipped (will be loaded on first request)")
 
     # Initialize Qdrant Client
     print(f"Connecting to Qdrant at {QDRANT_HOST}:{QDRANT_PORT}...")
@@ -223,8 +227,23 @@ def read_root():
     return {"status": "ok", "service": "essential-oils-discovery-backend"}
 
 
+def _ensure_model_loaded():
+    """Lazy load model on first request if skipped during startup."""
+    global model
+    if model is None:
+        print(f"Lazy loading model: {MODEL_NAME}...")
+        device = "cuda" if torch.cuda.is_available() else "cpu"
+        try:
+            model = SentenceTransformer(MODEL_NAME, device=device, trust_remote_code=True)
+            print("Model loaded successfully.")
+        except Exception as e:
+            print(f"Error loading model: {e}")
+            raise e
+
+
 @app.post("/search", response_model=list[SearchResult])
 async def search_oils(request: SearchRequest):
+    _ensure_model_loaded()
     if not model or not qdrant_client:
         raise HTTPException(status_code=503, detail="Service not ready (model or db missing)")
 
@@ -295,6 +314,7 @@ async def recommend_oils(request: RecommendRequest):
 
 @app.post("/search/perplexity", response_model=list[SearchResult])
 async def search_oils_perplexity(request: SearchRequest):
+    _ensure_model_loaded()
     if not model or not qdrant_client or not PERPLEXITY_API_KEY:
         raise HTTPException(status_code=503, detail="Service not ready")
 
@@ -492,6 +512,7 @@ async def get_random_oils(
     ),
 ):
     """Returns random items for initial discovery"""
+    _ensure_model_loaded()
     if not qdrant_client:
         raise HTTPException(status_code=503, detail="Database connection missing")
 
