@@ -36,6 +36,7 @@ services:
     name: qdrant-service
     image:
       url: docker.io/qdrant/qdrant:latest
+    startCommand: "/qdrant/entrypoint.sh"
     plan: starter
     disk:
       name: qdrant-data
