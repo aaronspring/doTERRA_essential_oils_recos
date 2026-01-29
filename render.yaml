@@ -8,13 +8,8 @@ services:
     startCommand: >
       uvicorn backend.main:app --host 0.0.0.0 --port $PORT
     envVars:
-      - key: PYTHON_VERSION
-        value: 3.12
       - key: QDRANT_HOST
-        fromService:
-          name: qdrant-service
-          type: pserv
-          property: hostport
+        sync: false
       - key: QDRANT_PORT
         value: 6333
       - key: QDRANT_COLLECTION
@@ -31,17 +26,3 @@ services:
         sync: false
       - key: LANGFUSE_HOST
         value: https://cloud.langfuse.com
-
-  - type: pserv
-    name: qdrant-service
-    image:
-      url: docker.io/qdrant/qdrant:latest
-    startCommand: "/qdrant/entrypoint.sh"
-    plan: starter
-    disk:
-      name: qdrant-data
-      mountPath: /qdrant/storage
-      sizeGB: 10
-    envVars:
-      - key: QDRANT_API_KEY
-        sync: false
