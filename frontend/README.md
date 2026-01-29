@@ -1,4 +1,14 @@
-# React + TypeScript + Vite
+# dōTERRA Essential Oils Discovery - Frontend
+
+Modern React + TypeScript + Vite frontend for the essential oils discovery engine.
+
+## ⚠️ Backend Startup Note
+
+The backend service is hosted on **Render's free tier**, which includes a **cold start delay**. When accessing the app for the first time or after extended idle periods, please allow approximately **1 minute** for the backend to initialize. This is normal behavior and not an error.
+
+---
+
+## Development Setup
 
 This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
 

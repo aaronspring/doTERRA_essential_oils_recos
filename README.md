@@ -84,6 +84,12 @@ flowchart LR
 	style ext fill:#f9f,stroke:#333
 ```
 
+## ⚠️ Production Deployment Note
+
+The production deployment uses **Render's free tier**, which includes a **cold start delay**. When the backend service hasn't received requests for a while, it will take approximately **1 minute** to wake up and respond. This is normal behavior for free-tier services.
+
+---
+
 ## 🚀 Getting Started
 
 ### Prerequisites
