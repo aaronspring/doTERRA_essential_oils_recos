@@ -415,7 +415,10 @@ async def search_oils_perplexity(request: SearchRequest):
         print(f"DEBUG: Perplexity parsed oils: {oil_names}")
 
     except Exception as e:
-        print(f"Perplexity search failed: {e}")
+        import traceback
+
+        print(f"Perplexity search failed: {type(e).__name__}: {e}")
+        print(traceback.format_exc())
         # Continue with empty perplexity results
 
     perplexity_results = []
