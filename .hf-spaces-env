@@ -1,6 +1,9 @@
 # HuggingFace Spaces Environment Variables
 # Copy values from your production .env file
 
+# HuggingFace Hub (for faster model downloads with higher rate limits)
+HF_TOKEN=your_hf_token
+
 # Qdrant Configuration
 QDRANT_HOST=your_qdrant_host
 QDRANT_PORT=6333
