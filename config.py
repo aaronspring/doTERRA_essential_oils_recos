@@ -13,14 +13,14 @@ QDRANT_API_KEY = os.getenv("QDRANT_API_KEY", "")
 # Embedding model configuration
 # Must match the model used during data ingestion into Qdrant
 # all-MiniLM-L6-v2: ~90MB, 384-dim embeddings
-MODEL_NAME = os.getenv("MODEL_NAME", "sentence-transformers/all-MiniLM-L6-v2")
+MODEL_NAME = os.getenv("MODEL_NAME", "jinaai/jina-embeddings-v2-base-de")
 
 # The vector name in Qdrant is derived from the model name (the slug after /)
 VECTOR_NAME = MODEL_NAME.split("/")[-1]
 
 # Perplexity API Configuration
 PERPLEXITY_API_KEY = os.getenv("PERPLEXITY_API_KEY", "").strip()
-PERPLEXITY_MODEL = os.getenv("PERPLEXITY_MODEL", "llama-3.1-sonar-small-128k-online")
+PERPLEXITY_MODEL = os.getenv("PERPLEXITY_MODEL", "sonar-pro")
 
 # Langfuse Configuration
 LANGFUSE_PUBLIC_KEY = os.getenv("LANGFUSE_PUBLIC_KEY", "")
