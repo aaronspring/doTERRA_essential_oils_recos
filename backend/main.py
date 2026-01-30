@@ -329,8 +329,13 @@ async def recommend_oils(request: RecommendRequest):
 @app.post("/search/perplexity", response_model=list[SearchResult])
 async def search_oils_perplexity(request: SearchRequest):
     _ensure_model_loaded()
-    if not model or not qdrant_client or not PERPLEXITY_API_KEY:
+    if not model or not qdrant_client:
         raise HTTPException(status_code=503, detail="Service not ready")
+    if not PERPLEXITY_API_KEY:
+        raise HTTPException(
+            status_code=503,
+            detail="Perplexity API not configured. Using embedding search instead.",
+        )
 
     oil_names = []
 
@@ -370,6 +375,7 @@ async def search_oils_perplexity(request: SearchRequest):
         client = OpenAI(
             api_key=PERPLEXITY_API_KEY,
             base_url="https://api.perplexity.ai",
+            timeout=30.0,  # 30s timeout for Perplexity
         )
 
         response = client.chat.completions.create(
@@ -419,6 +425,7 @@ async def search_oils_perplexity(request: SearchRequest):
 
         print(f"Perplexity search failed: {type(e).__name__}: {e}")
         print(traceback.format_exc())
+        print("Note: HF Spaces may restrict outbound API access. Falling back to embedding search.")
         # Continue with empty perplexity results
 
     perplexity_results = []
