@@ -18,6 +18,8 @@ jobs:
         env:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
         run: |
+          git config user.email "ci@huggingface.co"
+          git config user.name "GitHub Actions"
           git remote add huggingface https://Aaron-test:$HF_TOKEN@huggingface.co/spaces/Aaron-test/doTERRA_essential_oil_recos_backend
           # Remove binary files that HF Spaces rejects
           git filter-branch -f --prune-empty --tree-filter 'rm -rf screenshots' HEAD
