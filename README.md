@@ -84,9 +84,32 @@ flowchart LR
 	style ext fill:#f9f,stroke:#333
 ```
 
-## ⚠️ Production Deployment Note
+## 🌐 Deployment
 
-The production deployment uses **Render's free tier**, which includes a **cold start delay**. When the backend service hasn't received requests for a while, it will take approximately **1 minute** to wake up and respond. This is normal behavior for free-tier services.
+### Backend (HuggingFace Spaces)
+
+The backend is deployed on **HuggingFace Spaces** as a Docker-based app:
+
+- **Space URL**: https://aaron-test-doterra-essential-oil-recos-backend.hf.space
+- **Repository**: [Aaron-test/doTERRA_essential_oil_recos_backend](https://huggingface.co/spaces/Aaron-test/doTERRA_essential_oil_recos_backend)
+- **Docker Image**: Uses Python 3.11-slim with FastAPI + Uvicorn on port 7860
+- **Environment Variables**: Configured in HF Spaces secrets (QDRANT_HOST, QDRANT_API_KEY, MODEL_NAME, etc.)
+
+#### Deployment Process
+
+1. **Build & Push**: Changes to `main` branch automatically trigger HF Spaces Docker build
+2. **Cold Start**: First request after idle period (~15 mins) may take ~30-60s (model loading + initialization)
+3. **Configuration**: All secrets managed via HF Spaces UI → Settings → Repository secrets
+
+See [HF_SPACES_DEPLOYMENT.md](./HF_SPACES_DEPLOYMENT.md) for detailed setup instructions.
+
+### Frontend (Vercel)
+
+Frontend deployed on **Vercel** (see DEPLOYMENT.md for details).
+
+### ⚠️ Production Deployment Note
+
+The backend may experience **cold start delays** on the free tier when idle. This is normal for serverless/free-tier deployments.
 
 ---
 
