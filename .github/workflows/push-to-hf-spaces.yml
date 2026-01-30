@@ -1,0 +1,22 @@
+name: Push to HuggingFace Spaces
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  push-to-hf:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Push to HuggingFace Spaces
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+        run: |
+          git remote add huggingface https://Aaron-test:$HF_TOKEN@huggingface.co/spaces/Aaron-test/doTERRA_essential_oil_recos_backend
+          git push huggingface main --force

@@ -68,7 +68,21 @@ In the HF Spaces UI:
 - Consider `SKIP_MODEL_LOAD=true` for cold starts if needed
 
 ## Sync with GitHub
-To pull latest changes from GitHub:
+
+### Automatic Sync (GitHub Actions)
+The project is configured with a GitHub Actions workflow that automatically pushes `main` branch to HF Spaces on every commit.
+
+**Setup Required:**
+1. Go to GitHub repo Settings → Secrets and variables → Actions
+2. Add `HF_TOKEN` secret:
+   - Get token from [HuggingFace Settings](https://huggingface.co/settings/tokens)
+   - Create a token with `write` access to spaces
+   - Add as `HF_TOKEN` secret in GitHub
+
+Once configured, every push to `main` will automatically deploy to HF Spaces.
+
+### Manual Sync
+To manually pull latest changes from GitHub:
 ```bash
 git fetch github main
 git merge github/main
