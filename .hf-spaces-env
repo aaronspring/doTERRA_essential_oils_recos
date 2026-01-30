@@ -1,0 +1,23 @@
+# HuggingFace Spaces Environment Variables
+# Copy values from your production .env file
+
+# Qdrant Configuration
+QDRANT_HOST=your_qdrant_host
+QDRANT_PORT=6333
+QDRANT_API_KEY=your_qdrant_api_key
+QDRANT_COLLECTION=essential_oils
+
+# Model Configuration
+MODEL_NAME=jinaai/jina-embeddings-v2-base-de
+
+# API Keys
+PERPLEXITY_API_KEY=your_perplexity_key
+OPENAI_API_KEY=your_openai_key
+
+# Langfuse (Optional)
+LANGFUSE_PUBLIC_KEY=your_langfuse_public_key
+LANGFUSE_SECRET_KEY=your_langfuse_secret_key
+LANGFUSE_HOST=https://cloud.langfuse.com
+
+# CORS
+ALLOWED_ORIGINS=https://Aaron-test-doTERRA-essential-oil-recos-backend.hf.space,http://localhost:5173,http://localhost:3000
