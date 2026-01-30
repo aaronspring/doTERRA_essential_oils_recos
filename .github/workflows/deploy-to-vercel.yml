@@ -8,7 +8,6 @@ on:
 jobs:
   deploy-to-vercel:
     runs-on: ubuntu-latest
-    environment: frontend-production
     steps:
       - name: Checkout repo
         uses: actions/checkout@v4
