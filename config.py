@@ -19,7 +19,7 @@ MODEL_NAME = os.getenv("MODEL_NAME", "sentence-transformers/all-MiniLM-L6-v2")
 VECTOR_NAME = MODEL_NAME.split("/")[-1]
 
 # Perplexity API Configuration
-PERPLEXITY_API_KEY = os.getenv("PERPLEXITY_API_KEY", "")
+PERPLEXITY_API_KEY = os.getenv("PERPLEXITY_API_KEY", "").strip()
 PERPLEXITY_MODEL = os.getenv("PERPLEXITY_MODEL", "llama-3.1-sonar-small-128k-online")
 
 # Langfuse Configuration

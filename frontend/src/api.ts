@@ -17,7 +17,9 @@ export const api = {
             liked_oils: likedOils,
             disliked_oils: dislikedOils
         };
-        const response = await axios.post(`${API_URL}${endpoint}`, payload);
+        const response = await axios.post(`${API_URL}${endpoint}`, payload, {
+            timeout: 45000  // 45s timeout for Perplexity calls
+        });
         return response.data;
     },
     recommend: async (positive: number[], negative: number[] = []): Promise<SearchResult[]> => {

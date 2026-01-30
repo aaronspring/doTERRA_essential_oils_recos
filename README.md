@@ -105,7 +105,18 @@ See [HF_SPACES_DEPLOYMENT.md](./HF_SPACES_DEPLOYMENT.md) for detailed setup inst
 
 ### Frontend (Vercel)
 
-Frontend deployed on **Vercel** (see DEPLOYMENT.md for details).
+The frontend is deployed on **Vercel**:
+
+- **Production URL**: https://do-terra-essential-oils-recos.vercel.app
+- **Build Command**: `npm run build` (TypeScript + Vite)
+- **Output Directory**: `dist`
+- **Environment Variables**: `VITE_API_URL` points to the HF Spaces backend
+
+#### Deployment Process
+
+1. **Automatic**: Push to `main` triggers automatic deployment via Vercel GitHub integration
+2. **Manual**: Run `vercel --prod` from the `frontend/` directory
+3. **Configuration**: See `frontend/vercel.json` for build settings
 
 ### ⚠️ Production Deployment Note
 

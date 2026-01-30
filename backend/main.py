@@ -27,6 +27,7 @@ try:
         LANGFUSE_SECRET_KEY,
         MODEL_NAME,
         PERPLEXITY_API_KEY,
+        PERPLEXITY_MODEL,
         QDRANT_API_KEY,
         QDRANT_COLLECTION,
         QDRANT_HOST,
@@ -41,7 +42,8 @@ except ImportError:
     QDRANT_API_KEY = os.getenv("QDRANT_API_KEY", "")
     MODEL_NAME: str = "jinaai/jina-embeddings-v2-base-de"
     VECTOR_NAME = MODEL_NAME.split("/")[-1]
-    PERPLEXITY_API_KEY = os.getenv("PERPLEXITY_API_KEY", "")
+    PERPLEXITY_API_KEY = os.getenv("PERPLEXITY_API_KEY", "").strip()
+    PERPLEXITY_MODEL = os.getenv("PERPLEXITY_MODEL", "sonar-pro")
     LANGFUSE_PUBLIC_KEY = os.getenv("LANGFUSE_PUBLIC_KEY", "")
     LANGFUSE_SECRET_KEY = os.getenv("LANGFUSE_SECRET_KEY", "")
     LANGFUSE_HOST = os.getenv("LANGFUSE_HOST", "https://cloud.langfuse.com")
@@ -379,7 +381,7 @@ async def search_oils_perplexity(request: SearchRequest):
         )
 
         response = client.chat.completions.create(
-            model="sonar",
+            model=PERPLEXITY_MODEL,
             messages=[
                 {"role": "system", "content": system_prompt},
                 {"role": "user", "content": user_prompt},
@@ -423,10 +425,12 @@ async def search_oils_perplexity(request: SearchRequest):
     except Exception as e:
         import traceback
 
-        print(f"Perplexity search failed: {type(e).__name__}: {e}")
+        error_type = type(e).__name__
+        print(f"Perplexity search failed: {error_type}: {e}")
         print(traceback.format_exc())
-        print("Note: HF Spaces may restrict outbound API access. Falling back to embedding search.")
-        # Continue with empty perplexity results
+        if "connect" in str(e).lower() or "timeout" in str(e).lower():
+            print("Note: HF Spaces blocks outbound API access to Perplexity.")
+        # Continue with empty perplexity results - will return embedding search only
 
     perplexity_results = []
     found_ids = set()

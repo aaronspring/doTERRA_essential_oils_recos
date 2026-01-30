@@ -90,7 +90,12 @@ function App() {
       setItems(results);
     } catch (err: any) {
       console.error(err);
-      setError(err.message || 'AI Search failed');
+      const isNetworkError = err.code === 'ECONNABORTED' || err.message?.includes('timeout') || err.message?.includes('Network');
+      if (isNetworkError) {
+        setError('AI Search unavailable (Perplexity API blocked on HF Spaces). Use regular search instead.');
+      } else {
+        setError(err.response?.data?.detail || err.message || 'AI Search failed');
+      }
     } finally {
       setLoading(false);
     }
