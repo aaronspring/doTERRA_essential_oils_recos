@@ -132,7 +132,7 @@ async def lifespan(app: FastAPI):
     # Skip model loading during Vercel build to save memory
     if os.getenv("SKIP_MODEL_LOAD") != "true":
         try:
-            model = SentenceTransformer(MODEL_NAME, device=device, trust_remote_code=True)
+            model = SentenceTransformer(MODEL_NAME, device=device)
             print("Model loaded successfully.")
         except Exception as e:
             print(f"Error loading model: {e}")
@@ -250,7 +250,7 @@ def _ensure_model_loaded():
         print(f"Lazy loading model: {MODEL_NAME}...")
         device = "cuda" if torch.cuda.is_available() else "cpu"
         try:
-            model = SentenceTransformer(MODEL_NAME, device=device, trust_remote_code=True)
+            model = SentenceTransformer(MODEL_NAME, device=device)
             print("Model loaded successfully.")
         except Exception as e:
             print(f"Error loading model: {e}")
