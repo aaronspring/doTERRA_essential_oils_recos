@@ -12,9 +12,8 @@ QDRANT_API_KEY = os.getenv("QDRANT_API_KEY", "")
 
 # Embedding model configuration
 # Must match the model used during data ingestion into Qdrant
-# jinaai/jina-embeddings-v2-base-de: ~500MB, 768-dim embeddings
-# German language optimized
-MODEL_NAME = os.getenv("MODEL_NAME", "jinaai/jina-embeddings-v2-base-de")
+# all-MiniLM-L6-v2: ~90MB, 384-dim embeddings
+MODEL_NAME = os.getenv("MODEL_NAME", "sentence-transformers/all-MiniLM-L6-v2")
 
 # The vector name in Qdrant is derived from the model name (the slug after /)
 VECTOR_NAME = MODEL_NAME.split("/")[-1]
