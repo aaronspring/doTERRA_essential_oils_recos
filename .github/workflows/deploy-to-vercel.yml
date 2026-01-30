@@ -1,4 +1,4 @@
-name: Push to HuggingFace Spaces
+name: Deploy to Vercel
 
 on:
   push:
@@ -6,13 +6,11 @@ on:
       - main
 
 jobs:
-  push-to-hf:
+  deploy-to-vercel:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repo
         uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
 
       - name: Create GitHub Deployment
         uses: actions/github-script@v7
@@ -22,26 +20,19 @@ jobs:
               owner: context.repo.owner,
               repo: context.repo.repo,
               ref: context.ref,
-              environment: 'huggingface-spaces-backend',
-              description: 'Backend deployment to HuggingFace Spaces',
+              environment: 'vercel-frontend',
+              description: 'Frontend deployment to Vercel',
               required_contexts: []
             });
             core.exportVariable('DEPLOYMENT_ID', deployment.data.id);
 
-      - name: Push to HuggingFace Spaces
-        env:
-          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+      - name: Deploy to Vercel
         run: |
-          git config user.email "ci@huggingface.co"
-          git config user.name "GitHub Actions"
-          git remote add huggingface https://Aaron-test:$HF_TOKEN@huggingface.co/spaces/Aaron-test/doTERRA_essential_oil_recos_backend
-          # Remove binary files that HF Spaces rejects
-          git filter-branch -f --prune-empty --tree-filter 'rm -rf screenshots' HEAD
-          # Replace README with HF Spaces version
-          cp HF_SPACES_README.md README.md
-          git add README.md
-          git commit --amend --no-edit
-          git push huggingface main --force
+          npm install -g vercel
+          vercel deploy --prod --token ${{ secrets.VERCEL_TOKEN }} --yes
+        env:
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
 
       - name: Update Deployment Status
         if: success()
@@ -55,7 +46,7 @@ jobs:
               deployment_id: deployment_id,
               state: 'success',
               description: 'Deployment successful',
-              environment_url: 'https://huggingface.co/spaces/Aaron-test/doTERRA_essential_oil_recos_backend'
+              environment_url: 'https://doterra-oils-recos.vercel.app'
             });
         env:
           DEPLOYMENT_ID: ${{ env.DEPLOYMENT_ID }}
