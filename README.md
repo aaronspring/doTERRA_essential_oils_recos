@@ -122,13 +122,14 @@ The frontend is deployed on **Vercel**:
 
 The backend may experience **cold start delays** on the free tier when idle. This is normal for serverless/free-tier deployments.
 
+**HuggingFace Spaces Sleep**: The backend may enter sleep mode after ~2 days of inactivity. If the application is unresponsive, you may need to manually wake it by visiting the [HF Space logs](https://huggingface.co/spaces/Aaron-test/doTERRA_essential_oil_recos_backend?logs=container) and clicking "Restart this Space" or by making a request to the API which should auto-restart it.
+
 ---
 
 ## 🚀 Getting Started
 
 ### Prerequisites
 
-- [Docker](https://www.docker.com/) and [Docker Compose](https://docs.docker.com/compose/)
 - [uv](https://docs.astral.sh/uv/getting-started/installation/)
 - [Node.js](https://nodejs.org/en/download)
 - optional: [perplexity](https://www.perplexity.ai) API key
@@ -154,27 +155,22 @@ Install all dependencies using the unified `uv` environment:
 make install
 ```
 
-### 2. Start the Infrastructure
-
-Run Qdrant and the Backend using Docker Compose:
-
-```bash
-make docker-up
-```
-
-### 3. Ingest Data
+### 2. Ingest Data
 
 If you haven't already ingested the data into Qdrant, you can run the full pipeline or just the ingestion step:
 
 ```bash
-# To run the full pipeline (scrape -> serialize -> ingest)
-make pipeline
+# To run the full pipeline (extract PDFs -> enrich -> serialize -> ingest)
+# See the processing/ folder for the data pipeline scripts
+uv run python processing/extract_essential_oil_v2.py  # Extract from pip PDFs using PaddleOCR
+uv run python processing/run_extract_oils.py          # Enrich with shop_url and image_url
+uv run python processing/ingest_to_qdrant.py         # Ingest to Qdrant
 
 # Or just ingestion if you already have the CSVs
 make ingest
 ```
 
-### 4. Run the Frontend
+### 3. Run the Frontend
 
 The frontend is also managed via the Makefile:
 
@@ -192,10 +188,9 @@ The application will be available at `http://localhost:5173`.
 
 ## 🛠️ Data Pipeline
 
-If you want to update the data, the project includes several scraping scripts:
-- `scrape_all.py`: Discovers all oil URLs from the dōTERRA sitemap.
-- `scrape_single.py`: Scrapes detailed product information for each oil.
-- `EDA.ipynb`: A Jupyter Notebook for exploratory data analysis of the collected data.
+For detailed information about the data processing pipeline, see [processing/README.md](./processing/README.md).
+
+The pipeline includes scripts for extracting from PDFs, enriching with shop data, and ingesting essential oil data into Qdrant.
 
 ## Observability
 
