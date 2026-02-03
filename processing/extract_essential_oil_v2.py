@@ -329,22 +329,24 @@ Extract all available information from the OCR text into the specified JSON sche
 
 Rules:
 - Extract EXACTLY what is in the text, do not invent information
-- If a field is not present in the text, use null for optional fields or empty string/list for required fields
+- If a field is not present in the text, use null for optional fields or
+  empty string/list for required fields
 - For application methods, look for letters like A (Aromatic), T (Topical), I (Internal), N (Neat)
 - Split comma-separated values into list items
 - Remove bullet points and formatting from list items
-- The product code is usually a 7+ digit number"""
+- The product code is usually a 7+ digit number"""  # noqa: E501
 
 SYSTEM_PROMPT_DE = """Du bist ein Experte für die Extraktion strukturierter Produktinformationen aus Dokumenten zu ätherischen Ölen.
 Extrahiere alle verfügbaren Informationen aus dem OCR-Text in das angegebene JSON-Schema.
 
 Regeln:
 - Extrahiere GENAU das, was im Text steht, erfinde keine Informationen
-- Wenn ein Feld nicht im Text vorhanden ist, verwende null für optionale Felder oder leere Zeichenfolge/Liste für erforderliche Felder
+- Wenn ein Feld nicht im Text vorhanden ist, verwende null für optionale Felder
+  oder leere Zeichenfolge/Liste für erforderliche Felder
 - Für Anwendungsmethoden suche nach Buchstaben wie A (Aromatisch), T (Topisch), I (Innerlich), N (Pur)
 - Teile kommagetrennte Werte in Listenelemente auf
 - Entferne Aufzählungszeichen und Formatierungen aus Listenelementen
-- Der Produktcode ist normalerweise eine 7+ stellige Zahl"""
+- Der Produktcode ist normalerweise eine 7+ stellige Zahl"""  # noqa: E501
 
 
 def extract_structured(
@@ -466,8 +468,7 @@ def main():
         print(f"\n{'=' * 70}")
         print("SUMMARY")
         print(f"{'=' * 70}")
-        name_key = "name" if "name" in data else "name"
-        print(f"Product: {data.get('name', data.get('name', 'N/A'))}")
+        print(f"Product: {data.get('name', 'N/A')}")
         print(f"Latin: {data.get('latin_name', data.get('lateinischer_name', 'N/A'))}")
         print(f"Volume: {data.get('volume', data.get('volumen', 'N/A'))}")
 

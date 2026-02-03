@@ -14,16 +14,16 @@ class EssentialOil(BaseModel):
         description="The botanical Latin name of the plant (e.g., 'Citrus sinensis')"
     )
     application: list[str] = Field(
-        description="Application methods with codes: A (Aromatic), T (Topical), I (Internal), N (Neat/Dilution not required)"
+        description="Application codes: A (Aromatic), T (Topical), I (Internal), N (Neat)"
     )
     plant_part: list[str] = Field(
         description="Parts of the plant used to extract the oil (e.g., 'Peel', 'Leaf', 'Flower')"
     )
     extraction_method: str = Field(
-        description="The method used to extract the essential oil (e.g., 'Cold pressed', 'Steam distillation')"
+        description="Extraction method (e.g., 'Cold pressed', 'Steam distillation')"
     )
     aroma_description: list[str] = Field(
-        description="Descriptive terms for the oil's scent profile (e.g., 'Sweet', 'Fresh', 'Citrus')"
+        description="Scent profile terms (e.g., 'Sweet', 'Fresh', 'Citrus')"
     )
     main_chemical_constituents: list[str] = Field(
         description="Primary chemical compounds present in the oil (e.g., 'Limonene', 'Linalool')"
@@ -32,7 +32,7 @@ class EssentialOil(BaseModel):
         description="Key health and wellness benefits supported by the essential oil"
     )
     product_description: str = Field(
-        description="Comprehensive overview of the product, including sourcing, properties, and general uses"
+        description="Product overview with sourcing, properties, and uses"
     )
     usage_instructions: list[str] = Field(
         description="Specific ways to use the oil in daily routines"
@@ -61,12 +61,20 @@ wild_orange = EssentialOil(
         "Supports healthy inflammatory response when used internally",
         "Creates an uplifting environment",
     ],
-    product_description="Cold pressed from the peel, Wild Orange is one of dōTERRA's top selling essential oils due to its energizing aroma and multiple health benefits. High in limonene, Wild Orange may support a healthy inflammatory response when used internally. It can be used as a daily surface cleaner throughout the home. Diffusing Wild Orange will energize and uplift the atmosphere while freshening the air. Wild Orange enhances any essential oil blend with a fresh, sweet, refreshing aroma.",
+    product_description=(
+        "Cold pressed from the peel, Wild Orange is one of dōTERRA's top selling "
+        "essential oils due to its energizing aroma and multiple health benefits. "
+        "High in limonene, it may support a healthy inflammatory response when "
+        "used internally. It can be used as a daily surface cleaner throughout the "
+        "home. Diffusing Wild Orange will energize and uplift the atmosphere while "
+        "freshening the air. Wild Orange enhances any essential oil blend with a "
+        "fresh, sweet, refreshing aroma."
+    ),
     usage_instructions=[
         "Mix with water in a spray bottle and spritz on surfaces for a cleansing boost",
         "Add a drop to your water every day for a burst of flavor and to promote overall health",
         "Diffuse for an uplifting aroma and to freshen the air",
-        "Place one to two drops in palm of hand, rub hands together, cup over mouth and nose, and inhale deeply for an energizing boost",
+        "Place 1-2 drops in palm, rub hands together, cup over mouth and nose, and inhale deeply",
     ],
     uses=[
         "Daily surface cleaner throughout the home",
@@ -77,7 +85,8 @@ wild_orange = EssentialOil(
     directions_for_use=[
         "Aromatic use: Use three to four drops in the diffuser of choice",
         "Internal use: Dilute one drop in 4 fluid ounces of liquid",
-        "Topical use: Apply one to two drops to desired area. Dilute with a carrier oil to minimize any skin sensitivity",
+        "Topical use: Apply 1-2 drops to desired area. "
+        "Dilute with a carrier oil to minimize sensitivity",
     ],
     cautions=[
         "Possible skin sensitivity",
