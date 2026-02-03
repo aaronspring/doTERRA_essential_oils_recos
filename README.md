@@ -122,6 +122,8 @@ The frontend is deployed on **Vercel**:
 
 The backend may experience **cold start delays** on the free tier when idle. This is normal for serverless/free-tier deployments.
 
+**HuggingFace Spaces Sleep**: The backend may enter sleep mode after ~2 days of inactivity. If the application is unresponsive, you may need to manually wake it by visiting the [HF Space logs](https://huggingface.co/spaces/Aaron-test/doTERRA_essential_oil_recos_backend?logs=container) and clicking "Restart this Space" or by making a request to the API which should auto-restart it.
+
 ---
 
 ## 🚀 Getting Started
@@ -158,12 +160,12 @@ make install
 If you haven't already ingested the data into Qdrant, you can run the full pipeline or just the ingestion step:
 
 ```bash
-# To run the full pipeline (scrape -> serialize -> ingest)
+# To run the full pipeline (extract PDFs -> enrich -> serialize -> ingest)
 # See the processing/ folder for the data pipeline scripts
-uv run python processing/scrape_all.py
-uv run python processing/scrape_single.py
-uv run python processing/serialize.py
-uv run python processing/ingest_to_qdrant.py
+uv run python processing/extract_essential_oil_v2.py  # Extract from pip PDFs using PaddleOCR
+uv run python processing/run_extract_oils.py          # Enrich with shop_url and image_url
+uv run python processing/serialize.py                  # Serialize for embeddings
+uv run python processing/ingest_to_qdrant.py         # Ingest to Qdrant
 
 # Or just ingestion if you already have the CSVs
 make ingest
