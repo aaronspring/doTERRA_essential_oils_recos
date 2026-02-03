@@ -14,6 +14,7 @@ function App() {
   const [dislikedItems, setDislikedItems] = useState<SearchResult[]>([]);
 
   const [searchQuery, setSearchQuery] = useState('');
+  const [searchType, setSearchType] = useState<'full' | 'aroma'>('full');
   const [error, setError] = useState<string | null>(null);
   const [backendReady, setBackendReady] = useState(false);
   const [checkingBackend, setCheckingBackend] = useState(true);
@@ -44,6 +45,13 @@ function App() {
     }
   }, [checkingBackend]);
 
+  // Re-run search when search type changes
+  useEffect(() => {
+    if (searchQuery.trim()) {
+      performSearch();
+    }
+  }, [searchType]);
+
   const loadInitialDiscovery = async () => {
     setLoading(true);
     setError(null);
@@ -58,14 +66,13 @@ function App() {
     }
   };
 
-  const handleSearch = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const performSearch = async () => {
     if (!searchQuery.trim()) return;
 
     setLoading(true);
     setError(null);
     try {
-      const results = await api.search(searchQuery, false);
+      const results = await api.search(searchQuery, false, [], [], searchType);
       setItems(results);
     } catch (err: any) {
       console.error(err);
@@ -73,6 +80,11 @@ function App() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleSearch = (e: React.FormEvent) => {
+    e.preventDefault();
+    performSearch();
   };
 
   const handlePerplexitySearch = async () => {
@@ -85,7 +97,8 @@ function App() {
         searchQuery,
         true,
         likedItems.map(i => i.payload.product_name),
-        dislikedItems.map(i => i.payload.product_name)
+        dislikedItems.map(i => i.payload.product_name),
+        searchType
       );
       setItems(results);
     } catch (err: any) {
@@ -222,23 +235,37 @@ function App() {
             </h1>
           </div>
 
+          <div className="hidden md:block text-xs text-slate-400 text-center max-w-xs mx-auto leading-relaxed">
+            Enter your mood, energy or prompt to the search.<br />
+            Give feedback to recommendations and they'll adapt.
+          </div>
           <form onSubmit={handleSearch} className="relative w-full md:w-96 group">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-rose-500 transition-colors" size={18} />
             <input
               type="text"
-              placeholder="Search for 'sleep', 'energy'..."
-              className="w-full pl-10 pr-12 py-2.5 rounded-full bg-slate-100 border-none focus:ring-2 focus:ring-rose-500/20 focus:bg-white transition-all outline-none text-sm placeholder:text-slate-400 font-medium"
+              placeholder="Search for ..."
+              className="w-full pl-10 pr-28 py-2.5 rounded-full bg-slate-100 border-none focus:ring-2 focus:ring-rose-500/20 focus:bg-white transition-all outline-none text-sm placeholder:text-slate-400 font-medium"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
             />
+            <div className="absolute right-14 top-1/2 -translate-y-1/2 flex items-center gap-1">
+              <select
+                value={searchType}
+                onChange={(e) => setSearchType(e.target.value as 'full' | 'aroma')}
+                className="text-xs bg-transparent text-slate-500 hover:text-slate-700 font-medium cursor-pointer outline-none"
+              >
+                <option value="full">All</option>
+                <option value="aroma">Aroma</option>
+              </select>
+            </div>
              <button
-              type="button"
-              onClick={handlePerplexitySearch}
-              className="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 rounded-full text-slate-400 hover:text-purple-600 hover:bg-purple-50 transition-colors"
-              title="AI Search (Perplexity)"
-            >
-              <Sparkles size={16} />
-            </button>
+               type="button"
+               onClick={handlePerplexitySearch}
+               className="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 rounded-full text-slate-400 hover:text-purple-600 hover:bg-purple-50 transition-colors"
+               title="AI Search (Perplexity)"
+             >
+               <Sparkles size={16} />
+             </button>
           </form>
         </div>
       </header>

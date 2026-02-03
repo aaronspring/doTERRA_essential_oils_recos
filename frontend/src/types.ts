@@ -5,7 +5,7 @@ export interface ProductPayload {
     product_description?: string;
     brand_lifestyle_title?: string;
     brand_lifestyle_description?: string;
-    product_url?: string;
+    shop_url?: string;
 }
 
 export interface SearchResult {

@@ -15,9 +15,9 @@ export function OilCard({ item, onLike, onDislike, isLiked, isDisliked }: OilCar
         <div className="group relative bg-white rounded-2xl overflow-hidden border border-slate-100 shadow-sm hover:shadow-md transition-all duration-300">
             {/* Buy Link Top Left */}
             <div className="absolute top-3 left-3 z-10 opacity-0 group-hover:opacity-100 transition-opacity">
-                {item.payload.product_url && (
+                {item.payload.shop_url && (
                     <a
-                        href={item.payload.product_url}
+                        href={item.payload.shop_url}
                         target="_blank"
                         rel="noopener noreferrer"
                         className="flex items-center gap-1 bg-white/90 backdrop-blur-sm px-2 py-1 rounded-full text-[10px] font-bold text-slate-600 hover:text-rose-500 hover:bg-white transition-all shadow-sm"

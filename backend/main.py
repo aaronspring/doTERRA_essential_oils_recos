@@ -206,6 +206,10 @@ class SearchRequest(BaseModel):
     disliked_oils: list[str] = Field(
         default_factory=list, description="List of names of oils the user dislikes"
     )
+    search_type: str = Field(
+        default="full",
+        description="Vector search type: 'full' for all info, 'aroma' for aroma description only",
+    )
 
 
 class RecommendRequest(BaseModel):
@@ -225,7 +229,7 @@ class ProductPayload(BaseModel):
     product_description: str | None = None
     brand_lifestyle_title: str | None = None
     brand_lifestyle_description: str | None = None
-    product_url: str | None = None
+    shop_url: str | None = None
 
 
 class SearchResult(BaseModel):
@@ -263,6 +267,13 @@ async def search_oils(request: SearchRequest):
     if not model or not qdrant_client:
         raise HTTPException(status_code=503, detail="Service not ready (model or db missing)")
 
+    # Determine which vector to use based on search_type
+    model_slug = MODEL_NAME.split("/")[-1]
+    if request.search_type == "aroma":
+        vector_name = f"aroma_{model_slug}"
+    else:
+        vector_name = f"full_{model_slug}"
+
     # 1. Vectorize query
     # Standard ST encode
     query_vector = model.encode([request.query])[0].tolist()
@@ -272,7 +283,7 @@ async def search_oils(request: SearchRequest):
         search_result = qdrant_client.query_points(
             collection_name=QDRANT_COLLECTION,
             query=query_vector,
-            using=VECTOR_NAME,
+            using=vector_name,
             limit=request.limit,
             with_payload=True,
         )
@@ -512,10 +523,17 @@ async def search_oils_perplexity(request: SearchRequest):
     # 3. Regular Embedding Search for the rest
     query_vector = model.encode([request.query])[0].tolist()
 
+    # Determine which vector to use based on search_type
+    model_slug = MODEL_NAME.split("/")[-1]
+    if request.search_type == "aroma":
+        vector_name = f"aroma_{model_slug}"
+    else:
+        vector_name = f"full_{model_slug}"
+
     search_result_embedding = qdrant_client.query_points(
         collection_name=QDRANT_COLLECTION,
         query=query_vector,
-        using=VECTOR_NAME,
+        using=vector_name,
         limit=request.limit + 5,  # Fetch extra to account for deduplication
         with_payload=True,
     )

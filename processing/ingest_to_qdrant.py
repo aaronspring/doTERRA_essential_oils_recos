@@ -6,13 +6,10 @@ Uses the serialized text column for embeddings and maps German columns
 to English payload fields for the recommendation system.
 """
 
+import ast
 import os
 import sys
 from pathlib import Path
-
-project_root = str(Path(__file__).resolve().parent.parent)
-if project_root not in sys.path:
-    sys.path.append(project_root)
 
 import pandas as pd
 from qdrant_client import QdrantClient
@@ -20,7 +17,17 @@ from qdrant_client.models import Distance, PointStruct, VectorParams
 from sentence_transformers import SentenceTransformer
 from tqdm import tqdm
 
-from config import MODEL_NAME, QDRANT_API_KEY, QDRANT_COLLECTION, QDRANT_HOST, QDRANT_PORT
+project_root = str(Path(__file__).resolve().parent.parent)
+if project_root not in sys.path:
+    sys.path.append(project_root)
+
+from config import (  # noqa: E402
+    MODEL_NAME,
+    QDRANT_API_KEY,
+    QDRANT_COLLECTION,
+    QDRANT_HOST,
+    QDRANT_PORT,
+)
 
 # Column mapping from German CSV columns to English payload fields
 # Note: volume, application_methods, and status are excluded from Qdrant payload
@@ -120,6 +127,15 @@ def main():
         df = df[df["status"] != "DISCONTINUED"]
         print(f"Filtered {original_count - len(df)} discontinued products. Remaining: {len(df)}")
 
+    # Manually exclude specific products
+    EXCLUDED_URLS = ["https://shop.doterra.com/de/de_de/shop/cadewood-oil"]
+    if "shop_url" in df.columns:
+        original_count = len(df)
+        df = df[~df["shop_url"].isin(EXCLUDED_URLS)]
+        print(
+            f"Filtered {original_count - len(df)} manually excluded products. Remaining: {len(df)}"
+        )
+
     # Remove duplicates based on shop_url (keep first occurrence)
     if "shop_url" in df.columns:
         original_count = len(df)
@@ -177,7 +193,8 @@ def main():
 
     aroma_embeddings = model.encode(aroma_sentences, show_progress_bar=True, convert_to_numpy=True)
     print(
-        f"Generated {len(aroma_embeddings)} aroma embeddings with dimension {aroma_embeddings.shape[1]}."
+        f"Generated {len(aroma_embeddings)} aroma embeddings with "
+        f"dimension {aroma_embeddings.shape[1]}."
     )
 
     # Connect to Qdrant
@@ -236,12 +253,9 @@ def main():
                 # Transform plant_part and key_chemical_components to lists
                 elif german_col in ["pflanzenteil", "hauptchemische_bestandteile"]:
                     if isinstance(value, str) and value.startswith("[") and value.endswith("]"):
-                        # Already a string representation of a list, parse it
                         try:
-                            import ast
-
                             value = ast.literal_eval(value)
-                        except:
+                        except Exception:
                             value = [v.strip() for v in value.strip("[]").split(",")]
                     elif isinstance(value, str):
                         value = [v.strip() for v in value.strip("[]").split(",")]
@@ -270,7 +284,7 @@ def main():
                 return ""
             if isinstance(v, float) and pd.isna(v):
                 return ""
-            if isinstance(v, (list, dict)) and len(v) == 0:
+            if isinstance(v, list | dict) and len(v) == 0:
                 return []
             return v
 
