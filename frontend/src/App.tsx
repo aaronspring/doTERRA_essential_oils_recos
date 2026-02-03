@@ -72,7 +72,21 @@ function App() {
     setLoading(true);
     setError(null);
     try {
-      const results = await api.search(searchQuery, false, [], [], searchType);
+      let results: SearchResult[];
+      
+      // If there are feedback items, use recommend API which incorporates feedback + query
+      if (likedItems.length > 0 || dislikedItems.length > 0) {
+        results = await api.recommend(
+          likedItems.map(i => i.id),
+          dislikedItems.map(i => i.id),
+          searchQuery,
+          searchType
+        );
+      } else {
+        // No feedback, use regular search
+        results = await api.search(searchQuery, false, [], [], searchType);
+      }
+      
       setItems(results);
     } catch (err: any) {
       console.error(err);

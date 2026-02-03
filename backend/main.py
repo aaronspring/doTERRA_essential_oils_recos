@@ -276,8 +276,7 @@ async def search_oils(request: SearchRequest):
 
     print(
         f"[/search] query={request.query!r}, limit={request.limit}, "
-        f"search_type={request.search_type}, liked_oils={request.liked_oils}, "
-        f"disliked_oils={request.disliked_oils}"
+        f"search_type={request.search_type}"
     )
 
     # Determine which vector to use based on search_type
@@ -288,7 +287,6 @@ async def search_oils(request: SearchRequest):
         vector_name = f"full_{model_slug}"
 
     # 1. Vectorize query
-    # Standard ST encode
     query_vector = model.encode([request.query])[0].tolist()
 
     # 2. Search Qdrant (using new query_points API)

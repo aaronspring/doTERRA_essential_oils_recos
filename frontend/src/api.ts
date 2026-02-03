@@ -14,7 +14,7 @@ export const api = {
         const endpoint = usePerplexity ? '/search/perplexity' : '/search';
         const payload = {
             query,
-            limit: 30,
+            limit: 50,
             liked_oils: likedOils,
             disliked_oils: dislikedOils,
             search_type: searchType
@@ -41,7 +41,7 @@ export const api = {
     },
     discover: async (): Promise<SearchResult[]> => {
         // Initially fetch random or popular items
-        const response = await axios.get(`${API_URL}/random?limit=30`);
+        const response = await axios.get(`${API_URL}/random?limit=50`);
         return response.data;
     }
 };
