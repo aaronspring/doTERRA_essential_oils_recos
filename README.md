@@ -128,7 +128,6 @@ The backend may experience **cold start delays** on the free tier when idle. Thi
 
 ### Prerequisites
 
-- [Docker](https://www.docker.com/) and [Docker Compose](https://docs.docker.com/compose/)
 - [uv](https://docs.astral.sh/uv/getting-started/installation/)
 - [Node.js](https://nodejs.org/en/download)
 - optional: [perplexity](https://www.perplexity.ai) API key
@@ -154,27 +153,23 @@ Install all dependencies using the unified `uv` environment:
 make install
 ```
 
-### 2. Start the Infrastructure
-
-Run Qdrant and the Backend using Docker Compose:
-
-```bash
-make docker-up
-```
-
-### 3. Ingest Data
+### 2. Ingest Data
 
 If you haven't already ingested the data into Qdrant, you can run the full pipeline or just the ingestion step:
 
 ```bash
 # To run the full pipeline (scrape -> serialize -> ingest)
-make pipeline
+# See the processing/ folder for the data pipeline scripts
+uv run python processing/scrape_all.py
+uv run python processing/scrape_single.py
+uv run python processing/serialize.py
+uv run python processing/ingest_to_qdrant.py
 
 # Or just ingestion if you already have the CSVs
 make ingest
 ```
 
-### 4. Run the Frontend
+### 3. Run the Frontend
 
 The frontend is also managed via the Makefile:
 
@@ -192,10 +187,9 @@ The application will be available at `http://localhost:5173`.
 
 ## 🛠️ Data Pipeline
 
-If you want to update the data, the project includes several scraping scripts:
-- `scrape_all.py`: Discovers all oil URLs from the dōTERRA sitemap.
-- `scrape_single.py`: Scrapes detailed product information for each oil.
-- `EDA.ipynb`: A Jupyter Notebook for exploratory data analysis of the collected data.
+For detailed information about the data processing pipeline, see [processing/README.md](./processing/README.md).
+
+The pipeline includes scripts for scraping, serializing, and ingesting essential oil data into Qdrant.
 
 ## Observability
 
