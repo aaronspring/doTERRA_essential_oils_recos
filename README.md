@@ -164,7 +164,6 @@ If you haven't already ingested the data into Qdrant, you can run the full pipel
 # See the processing/ folder for the data pipeline scripts
 uv run python processing/extract_essential_oil_v2.py  # Extract from pip PDFs using PaddleOCR
 uv run python processing/run_extract_oils.py          # Enrich with shop_url and image_url
-uv run python processing/serialize.py                  # Serialize for embeddings
 uv run python processing/ingest_to_qdrant.py         # Ingest to Qdrant
 
 # Or just ingestion if you already have the CSVs
@@ -191,7 +190,7 @@ The application will be available at `http://localhost:5173`.
 
 For detailed information about the data processing pipeline, see [processing/README.md](./processing/README.md).
 
-The pipeline includes scripts for scraping, serializing, and ingesting essential oil data into Qdrant.
+The pipeline includes scripts for extracting from PDFs, enriching with shop data, and ingesting essential oil data into Qdrant.
 
 ## Observability
 
