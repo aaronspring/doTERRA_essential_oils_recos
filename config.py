@@ -7,7 +7,7 @@ load_dotenv()
 # Qdrant configuration
 QDRANT_HOST = os.getenv("QDRANT_HOST", "localhost")
 QDRANT_PORT = int(os.getenv("QDRANT_PORT", 6333))
-QDRANT_COLLECTION = os.getenv("QDRANT_COLLECTION", "essential_oils")
+QDRANT_COLLECTION = os.getenv("QDRANT_COLLECTION", "essential_oils_paddle")
 QDRANT_API_KEY = os.getenv("QDRANT_API_KEY", "")
 
 # Embedding model configuration
@@ -16,7 +16,8 @@ QDRANT_API_KEY = os.getenv("QDRANT_API_KEY", "")
 MODEL_NAME = os.getenv("MODEL_NAME", "jinaai/jina-embeddings-v2-base-de")
 
 # The vector name in Qdrant is derived from the model name (the slug after /)
-VECTOR_NAME = MODEL_NAME.split("/")[-1]
+# Prefixed with "full_" to match the ingestion script's naming convention
+VECTOR_NAME = f"full_{MODEL_NAME.split('/')[-1]}"
 
 # Perplexity API Configuration
 PERPLEXITY_API_KEY = os.getenv("PERPLEXITY_API_KEY", "").strip()

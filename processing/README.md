@@ -9,6 +9,7 @@ To update the dataset and vector database from scratch, run the scripts in the f
 1.  **Scrape Data**:
     ```bash
     uv run python scrape_all.py
+    # or: make scrape
     ```
     *   **Input**: doTERRA German sitemap.
     *   **Output**: `doterra_oils_sitemap.csv` (Raw scraped data).
@@ -16,16 +17,26 @@ To update the dataset and vector database from scratch, run the scripts in the f
 2.  **Serialize & Filter Data**:
     ```bash
     uv run python serialize.py
+    # or: make serialize
     ```
     *   **Input**: `doterra_oils_sitemap.csv`
     *   **Output**: `single_oil.csv` (Filtered for single oils with `serialized_text` column).
     *   This script handles categorization (Single vs Blend), filtering out base oils, and generating the text format used for embeddings.
 
-3.  **Ingest to Qdrant**:
+3.  **Extract & Enrich Data**:
     ```bash
-    uv run python ingest_to_qdrant.py
+    uv run python run_extract_oils.py
+    # or: make extract
     ```
     *   **Input**: `single_oil.csv`
+    *   **Output**: `filtered_oils_with_shop_urls.csv` (Enriched oil data with shop URLs and descriptions).
+
+4.  **Ingest to Qdrant**:
+    ```bash
+    uv run python ingest_to_qdrant.py
+    # or: make ingest
+    ```
+    *   **Input**: `filtered_oils_with_shop_urls.csv`
     *   **Action**: Generates Jina embeddings (v2-base-de) and uploads them to the local Qdrant instance.
     *   **Note**: Ensure Qdrant is running via Docker (`docker-compose up -d`) before running this.
 

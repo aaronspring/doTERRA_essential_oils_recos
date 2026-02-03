@@ -41,7 +41,7 @@ except ImportError:
     QDRANT_COLLECTION = os.getenv("QDRANT_COLLECTION", "essential_oils")
     QDRANT_API_KEY = os.getenv("QDRANT_API_KEY", "")
     MODEL_NAME: str = "jinaai/jina-embeddings-v2-base-de"
-    VECTOR_NAME = MODEL_NAME.split("/")[-1]
+    VECTOR_NAME = f"full_{MODEL_NAME.split('/')[-1]}"
     PERPLEXITY_API_KEY = os.getenv("PERPLEXITY_API_KEY", "").strip()
     PERPLEXITY_MODEL = os.getenv("PERPLEXITY_MODEL", "sonar-pro")
     LANGFUSE_PUBLIC_KEY = os.getenv("LANGFUSE_PUBLIC_KEY", "")
@@ -132,7 +132,7 @@ async def lifespan(app: FastAPI):
     # Skip model loading during Vercel build to save memory
     if os.getenv("SKIP_MODEL_LOAD") != "true":
         try:
-            model = SentenceTransformer(MODEL_NAME, device=device)
+            model = SentenceTransformer(MODEL_NAME, device=device, trust_remote_code=True)
             print("Model loaded successfully.")
         except Exception as e:
             print(f"Error loading model: {e}")
@@ -206,14 +206,25 @@ class SearchRequest(BaseModel):
     disliked_oils: list[str] = Field(
         default_factory=list, description="List of names of oils the user dislikes"
     )
+    search_type: str = Field(
+        default="full",
+        description="Vector search type: 'full' for all info, 'aroma' for aroma description only",
+    )
 
 
 class RecommendRequest(BaseModel):
     positive: list[int] = Field(
-        ..., min_length=1, description="List of point IDs for positive recommendations"
+        default_factory=list, description="List of point IDs for positive recommendations"
     )
     negative: list[int] = Field(
         default_factory=list, description="List of point IDs for negative recommendations"
+    )
+    query: str | None = Field(
+        default=None, description="Optional search query to include as positive signal"
+    )
+    search_type: str = Field(
+        default="full",
+        description="Vector search type: 'full' for all info, 'aroma' for aroma description only",
     )
     limit: int = Field(default=10, ge=1, le=100, description="Maximum number of results to return")
 
@@ -225,7 +236,7 @@ class ProductPayload(BaseModel):
     product_description: str | None = None
     brand_lifestyle_title: str | None = None
     brand_lifestyle_description: str | None = None
-    product_url: str | None = None
+    shop_url: str | None = None
 
 
 class SearchResult(BaseModel):
@@ -250,7 +261,7 @@ def _ensure_model_loaded():
         print(f"Lazy loading model: {MODEL_NAME}...")
         device = "cuda" if torch.cuda.is_available() else "cpu"
         try:
-            model = SentenceTransformer(MODEL_NAME, device=device)
+            model = SentenceTransformer(MODEL_NAME, device=device, trust_remote_code=True)
             print("Model loaded successfully.")
         except Exception as e:
             print(f"Error loading model: {e}")
@@ -263,6 +274,19 @@ async def search_oils(request: SearchRequest):
     if not model or not qdrant_client:
         raise HTTPException(status_code=503, detail="Service not ready (model or db missing)")
 
+    print(
+        f"[/search] query={request.query!r}, limit={request.limit}, "
+        f"search_type={request.search_type}, liked_oils={request.liked_oils}, "
+        f"disliked_oils={request.disliked_oils}"
+    )
+
+    # Determine which vector to use based on search_type
+    model_slug = MODEL_NAME.split("/")[-1]
+    if request.search_type == "aroma":
+        vector_name = f"aroma_{model_slug}"
+    else:
+        vector_name = f"full_{model_slug}"
+
     # 1. Vectorize query
     # Standard ST encode
     query_vector = model.encode([request.query])[0].tolist()
@@ -272,7 +296,7 @@ async def search_oils(request: SearchRequest):
         search_result = qdrant_client.query_points(
             collection_name=QDRANT_COLLECTION,
             query=query_vector,
-            using=VECTOR_NAME,
+            using=vector_name,
             limit=request.limit,
             with_payload=True,
         )
@@ -293,32 +317,55 @@ async def search_oils(request: SearchRequest):
 async def recommend_oils(request: RecommendRequest):
     """
     Recommend items based on positive (liked) and negative (disliked) item IDs.
-    Does NOT require a text query. Uses Qdrant's internal recommendation API
-    which uses the stored vectors of the referenced IDs.
+    Optionally includes the search query as a positive signal.
+    Uses Qdrant's internal recommendation API which uses the stored vectors.
     """
-    if not qdrant_client:
-        raise HTTPException(status_code=503, detail="Database connection missing")
+    _ensure_model_loaded()
+    if not model or not qdrant_client:
+        raise HTTPException(status_code=503, detail="Service not ready (model or db missing)")
 
-    if not request.positive:
+    if not request.positive and not request.query:
         raise HTTPException(
-            status_code=400, detail="At least one positive ID is required for recommendation."
+            status_code=400, detail="At least one positive ID or a query is required."
         )
 
+    print(
+        f"[/recommend] positive={request.positive}, negative={request.negative}, "
+        f"query={request.query!r}, search_type={request.search_type}, limit={request.limit}"
+    )
+
+    model_slug = MODEL_NAME.split("/")[-1]
+    if request.search_type == "aroma":
+        vector_name = f"aroma_{model_slug}"
+    else:
+        vector_name = f"full_{model_slug}"
+
     try:
+        positive_ids = list(request.positive)
+        negative_ids = list(request.negative)
+
+        if request.query:
+            query_vector = model.encode([request.query])[0].tolist()
+            positive_for_recommend = positive_ids + [query_vector] * max(
+                (len(positive_ids) + len(negative_ids)) // 2, 1
+            )
+        else:
+            positive_for_recommend = positive_ids
+
         recommend_input = models.RecommendInput(
-            positive=request.positive, negative=request.negative
+            positive=positive_for_recommend, negative=negative_ids
         )
         recommend_query = models.RecommendQuery(recommend=recommend_input)
 
         recommend_result = qdrant_client.query_points(
             collection_name=QDRANT_COLLECTION,
             query=recommend_query,
-            using=VECTOR_NAME,
+            using=vector_name,
             limit=request.limit,
             with_payload=True,
         )
     except Exception as e:
-        print(f"Qdrant recommendation failed: {type(e).__name__}")
+        print(f"Qdrant recommendation failed: {type(e).__name__}: {e}")
         raise HTTPException(status_code=500, detail="Recommendation operation failed")
 
     results = []
@@ -512,10 +559,17 @@ async def search_oils_perplexity(request: SearchRequest):
     # 3. Regular Embedding Search for the rest
     query_vector = model.encode([request.query])[0].tolist()
 
+    # Determine which vector to use based on search_type
+    model_slug = MODEL_NAME.split("/")[-1]
+    if request.search_type == "aroma":
+        vector_name = f"aroma_{model_slug}"
+    else:
+        vector_name = f"full_{model_slug}"
+
     search_result_embedding = qdrant_client.query_points(
         collection_name=QDRANT_COLLECTION,
         query=query_vector,
-        using=VECTOR_NAME,
+        using=vector_name,
         limit=request.limit + 5,  # Fetch extra to account for deduplication
         with_payload=True,
     )

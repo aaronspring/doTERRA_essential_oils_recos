@@ -8,24 +8,33 @@ export const api = {
         query: string,
         usePerplexity: boolean = false,
         likedOils: string[] = [],
-        dislikedOils: string[] = []
+        dislikedOils: string[] = [],
+        searchType: 'full' | 'aroma' = 'full'
     ): Promise<SearchResult[]> => {
         const endpoint = usePerplexity ? '/search/perplexity' : '/search';
         const payload = {
             query,
             limit: 30,
             liked_oils: likedOils,
-            disliked_oils: dislikedOils
+            disliked_oils: dislikedOils,
+            search_type: searchType
         };
         const response = await axios.post(`${API_URL}${endpoint}`, payload, {
             timeout: 45000  // 45s timeout for Perplexity calls
         });
         return response.data;
     },
-    recommend: async (positive: number[], negative: number[] = []): Promise<SearchResult[]> => {
+    recommend: async (
+        positive: number[],
+        negative: number[] = [],
+        query: string | null = null,
+        searchType: 'full' | 'aroma' = 'full'
+    ): Promise<SearchResult[]> => {
         const response = await axios.post(`${API_URL}/recommend`, {
             positive,
             negative,
+            query,
+            search_type: searchType,
             limit: 30
         });
         return response.data;
