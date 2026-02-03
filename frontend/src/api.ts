@@ -24,10 +24,17 @@ export const api = {
         });
         return response.data;
     },
-    recommend: async (positive: number[], negative: number[] = []): Promise<SearchResult[]> => {
+    recommend: async (
+        positive: number[],
+        negative: number[] = [],
+        query: string | null = null,
+        searchType: 'full' | 'aroma' = 'full'
+    ): Promise<SearchResult[]> => {
         const response = await axios.post(`${API_URL}/recommend`, {
             positive,
             negative,
+            query,
+            search_type: searchType,
             limit: 30
         });
         return response.data;

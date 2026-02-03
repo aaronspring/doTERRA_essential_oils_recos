@@ -180,13 +180,11 @@ function App() {
   const updateRecommendations = async (positiveIds: number[], negativeIds: number[]) => {
     setLoading(true);
     try {
-      // Recommendation requires at least one positive item. 
-      // If we have no positive items (even if we have negative ones), we fall back to discovery.
       if (positiveIds.length === 0) {
         const results = await api.discover();
         setItems(results);
       } else {
-        const results = await api.recommend(positiveIds, negativeIds);
+        const results = await api.recommend(positiveIds, negativeIds, searchQuery, searchType);
         setItems(results);
       }
     } catch (err: any) {
