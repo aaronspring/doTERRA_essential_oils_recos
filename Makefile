@@ -1,12 +1,14 @@
-.PHONY: help install scrape serialize ingest pipeline docker-up docker-down dev-backend dev-frontend dev lint typecheck format precommit
+.PHONY: help install scrape serialize ingest extract pipeline docker-up docker-down dev-backend dev-frontend dev lint typecheck format precommit
 
 help:
 	@echo "Available commands:"
 	@echo "  make install       - Install dependencies for all components"
 	@echo "  make scrape        - Scrape raw data from dōTERRA sitemap"
 	@echo "  make serialize     - Process and filter scraped data"
+	@echo "  make extract       - Extract and enrich oil data from shop URLs"
 	@echo "  make ingest        - Generate embeddings and upload to Qdrant"
-	@echo "  make pipeline      - Run scrape, serialize, and ingest in order"
+	@echo "  make pipeline      - Run scrape, serialize, extract, and ingest in order"
+	@echo "  See README.md for full pipeline details."
 	@echo "  make docker-up     - Start Qdrant and other services via docker-compose"
 	@echo "  make docker-down   - Stop docker services"
 	@echo "  make dev-backend   - Start backend development server"
@@ -20,7 +22,7 @@ help:
 run-app: install docker-up
 	@echo "Waiting for database to start..."
 	@sleep 3
-	@echo "Ensuring data is ingested..."
+	@echo "Running full pipeline: scrape → serialize → extract → ingest..."
 	make pipeline
 	@echo "Starting the application..."
 	@echo "Your browser will open automatically at http://localhost:5173"
@@ -51,10 +53,13 @@ scrape:
 serialize:
 	uv run python processing/serialize.py
 
+extract:
+	uv run python processing/run_extract_oils.py
+
 ingest:
 	uv run python processing/ingest_to_qdrant.py
 
-pipeline: scrape serialize ingest
+pipeline: scrape serialize extract ingest
 
 docker-up:
 	docker-compose up -d

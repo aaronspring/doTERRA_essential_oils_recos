@@ -41,7 +41,7 @@ except ImportError:
     QDRANT_COLLECTION = os.getenv("QDRANT_COLLECTION", "essential_oils")
     QDRANT_API_KEY = os.getenv("QDRANT_API_KEY", "")
     MODEL_NAME: str = "jinaai/jina-embeddings-v2-base-de"
-    VECTOR_NAME = MODEL_NAME.split("/")[-1]
+    VECTOR_NAME = f"full_{MODEL_NAME.split('/')[-1]}"
     PERPLEXITY_API_KEY = os.getenv("PERPLEXITY_API_KEY", "").strip()
     PERPLEXITY_MODEL = os.getenv("PERPLEXITY_MODEL", "sonar-pro")
     LANGFUSE_PUBLIC_KEY = os.getenv("LANGFUSE_PUBLIC_KEY", "")
@@ -132,7 +132,7 @@ async def lifespan(app: FastAPI):
     # Skip model loading during Vercel build to save memory
     if os.getenv("SKIP_MODEL_LOAD") != "true":
         try:
-            model = SentenceTransformer(MODEL_NAME, device=device)
+            model = SentenceTransformer(MODEL_NAME, device=device, trust_remote_code=True)
             print("Model loaded successfully.")
         except Exception as e:
             print(f"Error loading model: {e}")
@@ -250,7 +250,7 @@ def _ensure_model_loaded():
         print(f"Lazy loading model: {MODEL_NAME}...")
         device = "cuda" if torch.cuda.is_available() else "cpu"
         try:
-            model = SentenceTransformer(MODEL_NAME, device=device)
+            model = SentenceTransformer(MODEL_NAME, device=device, trust_remote_code=True)
             print("Model loaded successfully.")
         except Exception as e:
             print(f"Error loading model: {e}")

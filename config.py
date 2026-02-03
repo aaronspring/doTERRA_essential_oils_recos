@@ -16,7 +16,8 @@ QDRANT_API_KEY = os.getenv("QDRANT_API_KEY", "")
 MODEL_NAME = os.getenv("MODEL_NAME", "jinaai/jina-embeddings-v2-base-de")
 
 # The vector name in Qdrant is derived from the model name (the slug after /)
-VECTOR_NAME = MODEL_NAME.split("/")[-1]
+# Prefixed with "full_" to match the ingestion script's naming convention
+VECTOR_NAME = f"full_{MODEL_NAME.split('/')[-1]}"
 
 # Perplexity API Configuration
 PERPLEXITY_API_KEY = os.getenv("PERPLEXITY_API_KEY", "").strip()
